@@ -622,6 +622,152 @@ svg {
   color: #a9979c;
 }
 
+.order-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.order-modal.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.order-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(33, 21, 18, 0.45);
+}
+
+.order-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(620px, calc(100vw - 24px));
+  max-height: min(90vh, 820px);
+  overflow: auto;
+  background: var(--card);
+  border-radius: 28px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+.order-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.order-header {
+  margin-bottom: 20px;
+  padding-right: 36px;
+}
+
+.order-header h3 {
+  margin-top: 8px;
+}
+
+.order-form {
+  display: grid;
+  gap: 18px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font: inherit;
+  color: var(--ink);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid rgba(232, 84, 45, 0.18);
+  border-color: var(--brand);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 16px;
+}
+
+.summary-box {
+  background: var(--brand-soft);
+  border-radius: 16px;
+  border: 1px solid rgba(232, 84, 45, 0.18);
+  padding: 12px 14px;
+  justify-content: center;
+}
+
+.summary-box span {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.summary-box strong {
+  font-size: 20px;
+  color: var(--brand);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.order-success {
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #e9f9ee;
+  border: 1px solid rgba(47, 158, 99, 0.2);
+  color: #1d6b43;
+}
+
+.order-success strong {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.order-success p {
+  margin-top: 4px;
+}
+
 /* Responsive */
 @media (max-width: 960px) {
   h1 {
@@ -652,6 +798,10 @@ svg {
 
   .footer-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .field-row {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -20,7 +20,7 @@
           <a href="#about">Giới thiệu</a>
           <a href="#contact">Liên hệ</a>
         </nav>
-        <a href="#menu" class="btn btn-primary">Đặt món</a>
+        <a href="#menu" class="btn btn-primary" data-open-order data-order-dish="Phở bò đặc biệt">Đặt món</a>
       </div>
     </header>
 
@@ -108,7 +108,7 @@
               <p class="dish-desc">Nước dùng ninh xương 12 tiếng, thịt bò mềm thơm.</p>
               <div class="dish-foot">
                 <span class="price">65.000đ</span>
-                <a href="#contact" class="btn btn-sm">Đặt ngay</a>
+                <a href="#contact" class="btn btn-sm" data-open-order data-order-dish="Phở bò đặc biệt">Đặt ngay</a>
               </div>
             </article>
             <article class="dish">
@@ -124,7 +124,7 @@
               <p class="dish-desc">Chả nướng than hoa, nước mắm chua ngọt chuẩn vị.</p>
               <div class="dish-foot">
                 <span class="price">55.000đ</span>
-                <a href="#contact" class="btn btn-sm">Đặt ngay</a>
+                <a href="#contact" class="btn btn-sm" data-open-order data-order-dish="Bún chả Hà Nội">Đặt ngay</a>
               </div>
             </article>
             <article class="dish">
@@ -139,7 +139,7 @@
               <p class="dish-desc">Bánh mì giòn, pate trứng, chả lụa đầy đặn.</p>
               <div class="dish-foot">
                 <span class="price">30.000đ</span>
-                <a href="#contact" class="btn btn-sm">Đặt ngay</a>
+                <a href="#contact" class="btn btn-sm" data-open-order data-order-dish="Bánh mì que CBM">Đặt ngay</a>
               </div>
             </article>
             <article class="dish">
@@ -154,7 +154,7 @@
               <p class="dish-desc">Sườn nướng mật ong, bì chả trứng hấp nóng.</p>
               <div class="dish-foot">
                 <span class="price">60.000đ</span>
-                <a href="#contact" class="btn btn-sm">Đặt ngay</a>
+                <a href="#contact" class="btn btn-sm" data-open-order data-order-dish="Cơm tấm sườn">Đặt ngay</a>
               </div>
             </article>
             <article class="dish">
@@ -169,7 +169,7 @@
               <p class="dish-desc">Vị cay nồng đặc trưng, giò heo mềm ngon.</p>
               <div class="dish-foot">
                 <span class="price">65.000đ</span>
-                <a href="#contact" class="btn btn-sm">Đặt ngay</a>
+                <a href="#contact" class="btn btn-sm" data-open-order data-order-dish="Bún bò Huế">Đặt ngay</a>
               </div>
             </article>
             <article class="dish">
@@ -184,7 +184,7 @@
               <p class="dish-desc">Trà ủ tươi, trân châu dẻo, ít đường tuỳ chọn.</p>
               <div class="dish-foot">
                 <span class="price">35.000đ</span>
-                <a href="#contact" class="btn btn-sm">Đặt ngay</a>
+                <a href="#contact" class="btn btn-sm" data-open-order data-order-dish="Trà sữa trân châu">Đặt ngay</a>
               </div>
             </article>
           </div>
@@ -231,11 +231,74 @@
           <p>Gọi ngay hoặc đặt món trực tuyến, chúng tôi sẽ giao đến bạn trong 30 phút.</p>
           <div class="hero-actions">
             <a href="tel:19001234" class="btn btn-light btn-lg">Gọi 1900 1234</a>
-            <a href="#menu" class="btn btn-outline-light btn-lg">Đặt món online</a>
+            <a href="#menu" class="btn btn-outline-light btn-lg" data-open-order data-order-dish="Phở bò đặc biệt">Đặt món online</a>
           </div>
         </div>
       </section>
     </main>
+
+    <div class="order-modal" id="order-modal" aria-hidden="true">
+      <div class="order-modal-backdrop" data-close-order></div>
+      <div class="order-modal-panel" role="dialog" aria-modal="true" aria-labelledby="order-title">
+        <button type="button" class="order-close" aria-label="Đóng" data-close-order>×</button>
+        <div class="order-header">
+          <p class="eyebrow">Xác nhận đặt hàng</p>
+          <h3 id="order-title">Thông tin đơn hàng</h3>
+        </div>
+
+        <div id="order-success" class="order-success" hidden></div>
+
+        <form id="order-form" class="order-form">
+          <div class="field">
+            <label for="order-dish">Món ăn</label>
+            <select id="order-dish" name="dish">
+              <option value="Phở bò đặc biệt" data-price="65000">Phở bò đặc biệt - 65.000đ</option>
+              <option value="Bún chả Hà Nội" data-price="55000">Bún chả Hà Nội - 55.000đ</option>
+              <option value="Bánh mì que CBM" data-price="30000">Bánh mì que CBM - 30.000đ</option>
+              <option value="Cơm tấm sườn" data-price="60000">Cơm tấm sườn - 60.000đ</option>
+              <option value="Bún bò Huế" data-price="65000">Bún bò Huế - 65.000đ</option>
+              <option value="Trà sữa trân châu" data-price="35000">Trà sữa trân châu - 35.000đ</option>
+            </select>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="order-quantity">Số lượng</label>
+              <input id="order-quantity" name="quantity" type="number" min="1" value="1" />
+            </div>
+            <div class="field summary-box">
+              <span>Tổng tiền</span>
+              <strong id="order-total">65.000₫</strong>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="customer-name">Họ và tên</label>
+            <input id="customer-name" name="customerName" type="text" placeholder="Nhập họ và tên" required />
+          </div>
+
+          <div class="field">
+            <label for="customer-phone">Số điện thoại</label>
+            <input id="customer-phone" name="customerPhone" type="tel" placeholder="0901 234 567" required />
+          </div>
+
+          <div class="field">
+            <label for="customer-address">Địa chỉ giao hàng</label>
+            <textarea id="customer-address" name="customerAddress" rows="3" placeholder="Ví dụ: 123 Đường Lê Lợi, Q1, TP.HCM" required></textarea>
+          </div>
+
+          <div class="field">
+            <label for="customer-note">Ghi chú</label>
+            <textarea id="customer-note" name="customerNote" rows="2" placeholder="Thêm ghi chú nếu cần"></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" data-close-order>Hủy</button>
+            <button type="submit" class="btn btn-primary">Xác nhận đặt hàng</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <footer class="site-footer">
       <div class="container footer-grid">

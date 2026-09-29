@@ -53,12 +53,16 @@
           </div>
           <div class="admin-topbar-meta">
             <div class="admin-user">
-              <span class="admin-avatar">AD</span>
+              <span class="admin-avatar" id="admin-avatar">A</span>
               <span class="admin-user-text">
-                <strong>Quản trị viên</strong>
-                <small>cbmfood.vn</small>
+                <strong id="admin-user-name">Đang tải...</strong>
+                <small id="admin-user-email"></small>
               </span>
             </div>
+            <button type="button" class="admin-logout" id="admin-logout" title="Đăng xuất">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5" /><path d="M20 12H9" /><path d="M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6" /></svg>
+              <span>Đăng xuất</span>
+            </button>
           </div>
         </header>
 
@@ -164,6 +168,39 @@
 
     <div id="modal-root"></div>
     <div id="toast-root" class="toast-stack" aria-live="polite"></div>
+
+    <div class="gate" id="auth-gate" hidden>
+      <div class="gate-box">
+        <span class="gate-mark">CBM</span>
+        <h1 id="gate-title">Khu vực quản trị</h1>
+        <p id="gate-text" class="gate-text"></p>
+
+        <form id="gate-form" novalidate>
+          <div id="gate-fields">
+            <label class="gate-field">
+              <span>Email</span>
+              <input type="email" name="email" autocomplete="email" required />
+            </label>
+            <label class="gate-field">
+              <span>Mật khẩu</span>
+              <input
+                type="password"
+                name="password"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+          </div>
+          <p class="gate-error" id="gate-error" role="alert" hidden></p>
+          <button type="submit" class="btn btn-primary btn-block" id="gate-submit">
+            Đăng nhập
+          </button>
+        </form>
+
+        <p class="gate-hint" id="gate-hint"></p>
+        <a href="/" class="gate-back">← Về trang khách hàng</a>
+      </div>
+    </div>
 
     <script type="module" src="/src/admin.js"></script>
   </body>

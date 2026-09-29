@@ -4,6 +4,17 @@ const MINUTE = 60 * 1000
 const at = (hoursAgo = 0, minutes = 0) =>
   new Date(Date.now() - hoursAgo * HOUR - minutes * MINUTE).toISOString()
 
+export const SHIPPING_FEE = 15000
+export const FREE_SHIPPING_THRESHOLD = 200000
+export const MAX_QTY_PER_ITEM = 20
+
+export const SEED_ADMIN = {
+  name: 'Quản trị viên',
+  email: 'admin@cbmfood.vn',
+  phone: '0900123456',
+  password: 'admin123',
+}
+
 export const CATEGORIES = [
   'Món chính',
   'Món nước',

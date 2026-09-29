@@ -1399,3 +1399,140 @@
     bottom: 14px;
   }
 }
+
+/* ------------------------------------------------------------------- gate */
+
+.admin-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.admin-logout svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.admin-logout:hover {
+  color: #b23a1c;
+  border-color: #f0c4b4;
+}
+
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(160deg, #241a14, #3b2a21);
+}
+
+.gate-box {
+  width: min(420px, 100%);
+  padding: 32px;
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.gate-mark {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 18px;
+  border-radius: 16px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.gate-box h1 {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+
+.gate-text {
+  color: var(--text);
+  font-size: 14px;
+  margin-bottom: 22px;
+}
+
+.gate-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gate-field input {
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--page);
+  font: inherit;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.gate-field input:focus {
+  border-color: var(--brand);
+  background: var(--panel);
+}
+
+.gate-error {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fdecea;
+  color: #a3271b;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.gate-hint {
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.gate-hint code {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--page);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.gate-back {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.gate-back:hover {
+  color: var(--brand);
+}

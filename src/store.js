@@ -1,5 +1,6 @@
 import {
   CATEGORIES,
+  MAX_QTY_PER_ITEM,
   SEED_DISHES,
   SEED_ORDERS,
   accentOf,
@@ -7,6 +8,7 @@ import {
 
 const DISHES_KEY = 'cbmfood.admin.dishes.v1'
 const ORDERS_KEY = 'cbmfood.admin.orders.v1'
+const SEQ_KEY = 'cbmfood.admin.seq.v1'
 
 const clone = (value) =>
   typeof structuredClone === 'function'
@@ -27,15 +29,49 @@ function readCollection(key, fallback) {
   }
 }
 
+const numericTail = (id) => {
+  const num = Number(String(id).replace(/\D/g, ''))
+  return Number.isFinite(num) ? num : 0
+}
+
+const highestTail = (collection, fallback = 0) =>
+  collection.reduce((max, item) => Math.max(max, numericTail(item.id)), fallback)
+
+function readSeq() {
+  const dishes = readCollection(DISHES_KEY, SEED_DISHES)
+  const orders = readCollection(ORDERS_KEY, SEED_ORDERS)
+
+  let saved = { dish: 0, order: 1000 }
+  try {
+    const raw = window.localStorage.getItem(SEQ_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      saved = {
+        dish: Number(parsed.dish) || 0,
+        order: Number(parsed.order) || 1000,
+      }
+    }
+  } catch {
+    /* bộ đếm hỏng thì tính lại từ dữ liệu hiện có */
+  }
+
+  return {
+    dish: Math.max(saved.dish, highestTail(dishes)),
+    order: Math.max(saved.order, highestTail(orders, 1000)),
+  }
+}
+
 const state = {
   dishes: readCollection(DISHES_KEY, SEED_DISHES),
   orders: readCollection(ORDERS_KEY, SEED_ORDERS),
+  seq: readSeq(),
 }
 
 function persist() {
   try {
     window.localStorage.setItem(DISHES_KEY, JSON.stringify(state.dishes))
     window.localStorage.setItem(ORDERS_KEY, JSON.stringify(state.orders))
+    window.localStorage.setItem(SEQ_KEY, JSON.stringify(state.seq))
   } catch {
     /* localStorage bị chặn hoặc đầy dung lượng - vẫn chạy bằng state trong bộ nhớ */
   }
@@ -57,11 +93,19 @@ export const getDish = (id) => state.dishes.find((dish) => dish.id === id)
 export const getOrder = (id) => state.orders.find((order) => order.id === id)
 
 function nextDishId() {
-  const max = state.dishes.reduce((acc, dish) => {
-    const num = Number(String(dish.id).replace(/\D/g, ''))
-    return Number.isFinite(num) && num > acc ? num : acc
-  }, 0)
-  return `MH-${String(max + 1).padStart(3, '0')}`
+  state.seq.dish = Math.max(
+    state.seq.dish,
+    highestTail(state.dishes),
+  ) + 1
+  return `MH-${String(state.seq.dish).padStart(3, '0')}`
+}
+
+function nextOrderId() {
+  state.seq.order = Math.max(
+    state.seq.order,
+    highestTail(state.orders, 1000),
+  ) + 1
+  return `CB-${state.seq.order}`
 }
 
 export const sanitizeDish = (input) => ({
@@ -110,6 +154,101 @@ export function removeDish(id) {
   return true
 }
 
+export class OrderError extends Error {
+  constructor(message, field = null) {
+    super(message)
+    this.name = 'OrderError'
+    this.field = field
+  }
+}
+
+export function createOrder(input) {
+  const customer = String(input.customer ?? '').trim()
+  const phone = String(input.phone ?? '').trim()
+  const address = String(input.address ?? '').trim()
+  const note = String(input.note ?? '').trim()
+  const payment = input.payment === 'card' ? 'card' : 'cod'
+  const shipping = Math.max(0, Math.round(Number(input.shipping) || 0))
+  const rawItems = Array.isArray(input.items) ? input.items : []
+
+  if (!customer || customer.length < 2) {
+    throw new OrderError('Vui lòng nhập họ tên người nhận.', 'customer')
+  }
+  if (customer.length > 60) {
+    throw new OrderError('Họ tên quá dài (tối đa 60 ký tự).', 'customer')
+  }
+  if (!/^0\d{9,10}$/.test(phone)) {
+    throw new OrderError('Số điện thoại phải gồm 10-11 chữ số, bắt đầu bằng 0.', 'phone')
+  }
+  if (address.length < 10) {
+    throw new OrderError('Vui lòng nhập địa chỉ giao hàng đầy đủ.', 'address')
+  }
+  if (address.length > 200) {
+    throw new OrderError('Địa chỉ quá dài (tối đa 200 ký tự).', 'address')
+  }
+  if (!rawItems.length) {
+    throw new OrderError('Giỏ hàng đang trống.', 'items')
+  }
+
+  const items = rawItems.map((item) => {
+    const name = String(item.name ?? '').trim()
+    const price = Math.round(Number(item.price) || 0)
+    const qty = Math.round(Number(item.qty) || 0)
+
+    if (!name) throw new OrderError('Giỏ hàng chứa món không hợp lệ.', 'items')
+    if (qty < 1 || qty > MAX_QTY_PER_ITEM) {
+      throw new OrderError(
+        `Số lượng món “${name}” không hợp lệ (1-${MAX_QTY_PER_ITEM}).`,
+        'items',
+      )
+    }
+    if (price < 0) {
+      throw new OrderError(`Giá món “${name}” không hợp lệ.`, 'items')
+    }
+
+    const live = state.dishes.find((dish) => dish.name === name)
+    if (live && live.price !== price) {
+      throw new OrderError(
+        `Giá món “${name}” vừa thay đổi. Vui lòng kiểm tra lại giỏ hàng.`,
+        'items',
+      )
+    }
+    if (live && live.status === 'unavailable') {
+      throw new OrderError(`Món “${name}” hiện đã tạm ngưng.`, 'items')
+    }
+
+    return { name, price, qty }
+  })
+
+  const now = new Date().toISOString()
+  const order = {
+    id: nextOrderId(),
+    customer,
+    phone,
+    address,
+    items,
+    shipping,
+    status: 'pending',
+    payment,
+    note,
+    userId: input.userId ? String(input.userId) : null,
+    createdAt: now,
+    updatedAt: now,
+    history: [{ status: 'pending', at: now }],
+  }
+
+  state.orders = [order, ...state.orders]
+  state.dishes = state.dishes.map((dish) => {
+    const bought = items
+      .filter((item) => item.name === dish.name)
+      .reduce((sum, item) => sum + item.qty, 0)
+    return bought ? { ...dish, sold: dish.sold + bought } : dish
+  })
+
+  commit()
+  return order
+}
+
 export function updateOrderStatus(id, status) {
   const order = getOrder(id)
   if (!order || order.status === status) return null
@@ -131,5 +270,9 @@ export function updateOrderStatus(id, status) {
 export function resetData() {
   state.dishes = clone(SEED_DISHES)
   state.orders = clone(SEED_ORDERS)
+  state.seq = {
+    dish: highestTail(state.dishes),
+    order: highestTail(state.orders, 1000),
+  }
   commit()
 }

@@ -5,9 +5,11 @@ import {
   CATEGORIES,
   DISH_STATUS,
   ORDER_STATUS,
+  SEED_ADMIN,
   accentOf,
 } from './seed.js'
 import * as store from './store.js'
+import * as auth from './auth.js'
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -141,6 +143,19 @@ const el = {
   pageSub: $('#page-sub'),
   modalRoot: $('#modal-root'),
   toastRoot: $('#toast-root'),
+  shell: $('.admin-shell'),
+  avatar: $('#admin-avatar'),
+  userName: $('#admin-user-name'),
+  userEmail: $('#admin-user-email'),
+  logout: $('#admin-logout'),
+  gate: $('#auth-gate'),
+  gateTitle: $('#gate-title'),
+  gateText: $('#gate-text'),
+  gateForm: $('#gate-form'),
+  gateFields: $('#gate-fields'),
+  gateError: $('#gate-error'),
+  gateSubmit: $('#gate-submit'),
+  gateHint: $('#gate-hint'),
 }
 
 const badge = (tone, label) =>
@@ -957,6 +972,94 @@ function render() {
   if (ui.view) setView(ui.view)
 }
 
+/* ------------------------------------------------------------------ guard */
+
+const denyMessage = 'Bạn không có quyền quản trị. Vui lòng đăng nhập tài khoản admin.'
+
+function showGate(user) {
+  el.shell.hidden = true
+  el.gate.hidden = false
+  el.gateForm.hidden = false
+  el.gateFields.hidden = false
+  el.gateSubmit.textContent = 'Đăng nhập'
+  closeModal()
+
+  if (user) {
+    el.gateTitle.textContent = 'Không đủ quyền'
+    el.gateText.textContent = `${user.name} (${user.email}) là tài khoản khách hàng, không thể vào khu vực quản trị.`
+    el.gateHint.innerHTML = 'Bạn có thể tiếp tục mua sắm tại <a href="/">trang khách hàng</a>.'
+  } else {
+    el.gateTitle.textContent = 'Khu vực quản trị'
+    el.gateText.textContent = 'Vui lòng đăng nhập để quản lý thực đơn và đơn hàng.'
+    el.gateHint.innerHTML = `Tài khoản mẫu: <code>${esc(SEED_ADMIN.email)}</code> / <code>${esc(SEED_ADMIN.password)}</code>`
+  }
+
+  el.gateError.hidden = true
+  $('input[name="email"]', el.gateForm)?.focus()
+}
+
+function showAdmin(user) {
+  el.gate.hidden = true
+  el.shell.hidden = false
+  el.avatar.textContent = user.name.trim().charAt(0).toUpperCase() || 'A'
+  el.userName.textContent = user.name
+  el.userEmail.textContent = user.email
+  render()
+}
+
+function syncGuard() {
+  const user = auth.getUser()
+  if (auth.canAccessAdmin()) {
+    showAdmin(user)
+  } else {
+    showGate(user)
+  }
+}
+
+function setGateError(message) {
+  el.gateError.textContent = message
+  el.gateError.hidden = !message
+}
+
+el.gateForm.addEventListener('submit', async (event) => {
+  event.preventDefault()
+  setGateError('')
+
+  const data = new FormData(el.gateForm)
+  el.gateSubmit.disabled = true
+  el.gateSubmit.textContent = 'Đang kiểm tra...'
+
+  try {
+    const user = await auth.login({
+      email: data.get('email'),
+      password: data.get('password'),
+    })
+
+    if (user.role !== 'admin') {
+      auth.logout()
+      el.gateForm.reset()
+      showGate(user)
+      setGateError(denyMessage)
+      return
+    }
+
+    el.gateForm.reset()
+    showAdmin(user)
+    toast(`Chào ${user.name}.`)
+  } catch (error) {
+    setGateError(error.message)
+  } finally {
+    el.gateSubmit.disabled = false
+    el.gateSubmit.textContent = 'Đăng nhập'
+  }
+})
+
+el.logout.addEventListener('click', () => {
+  auth.logout()
+  showGate(null)
+  toast('Đã đăng xuất khỏi trang quản trị.')
+})
+
 /* ------------------------------------------------------------------ events */
 
 document.addEventListener('click', (event) => {
@@ -964,6 +1067,14 @@ document.addEventListener('click', (event) => {
   if (!trigger) return
 
   const { action, id, status } = trigger.dataset
+
+  if (!auth.canAccessAdmin()) {
+    if (action !== 'close-modal') {
+      toast(denyMessage, 'err')
+      showGate(auth.getUser())
+    }
+    return
+  }
 
   switch (action) {
     case 'open-dish-new':
@@ -1046,7 +1157,25 @@ window.addEventListener('hashchange', () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 })
 
-store.subscribe(() => render())
+store.subscribe(() => {
+  if (auth.canAccessAdmin()) render()
+})
 
-render()
-setView(window.location.hash.replace(/^#\/?/, '') || 'dashboard')
+async function bootstrap() {
+  ui.view = VIEWS[window.location.hash.replace(/^#\/?/, '')] ? window.location.hash.replace(/^#\/?/, '') : 'dashboard'
+
+  await auth.init()
+  syncGuard()
+
+  auth.subscribe((user) => {
+    if (!user) {
+      closeModal()
+      showGate(null)
+    } else if (!auth.canAccessAdmin()) {
+      closeModal()
+      showGate(user)
+    }
+  })
+}
+
+bootstrap()

@@ -3,18 +3,23 @@ import * as cart from './cart.js'
 import * as db from './store.js'
 import {
   CATEGORIES,
+  CATEGORY_META,
+  DEFAULT_RATING,
   DISH_STATUS,
+  DISH_TAGS,
   FREE_SHIPPING_THRESHOLD,
+  LOCATIONS,
   MAX_QTY_PER_ITEM,
   ORDER_STATUS,
-  SHIPPING_FEE,
+  SHOP_INFO,
   accentOf,
 } from './seed.js'
 
 const $ = (selector, scope = document) => scope.querySelector(selector)
 const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)]
 
-const money = (value) => `${Number(value || 0).toLocaleString('vi-VN')}đ`
+const numberFmt = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 })
+const money = (value) => `${numberFmt.format(Number(value) || 0)}đ`
 const plural = (count, word) => `${count} ${word}`
 
 const escapeHtml = (value) =>
@@ -37,8 +42,10 @@ const timeAgo = (iso) => {
 const dom = {}
 
 const ui = {
-  activeCategory: 'Tất cả',
+  activeCategory: 'all',
   keyword: '',
+  sort: 'popular',
+  location: SHOP_INFO.defaultLocation,
   lastFocused: null,
 }
 
@@ -91,106 +98,224 @@ const isOpen = (node) => !node.hidden
 
 /* ------------------------------------------------------------------ menu */
 
-function renderFilters() {
-  const counts = db.getDishes().reduce((acc, dish) => {
-    acc[dish.category] = (acc[dish.category] ?? 0) + 1
-    return acc
-  }, {})
+/** danh mục dùng trong dữ liệu cũ vẫn hiển thị được, không bị mất */
+function allCategories() {
+  const extra = db.getDishes().map((dish) => dish.category)
+  return [...CATEGORIES, ...extra.filter((name) => !CATEGORIES.includes(name))]
+}
 
-  const options = ['Tất cả', ...CATEGORIES.filter((item) => counts[item])]
-  dom.filters.innerHTML = options
+function categoryCount(name) {
+  return db.getDishes().filter((dish) => dish.category === name).length
+}
+
+function renderCategories() {
+  const items = [
+    { name: 'all', label: 'Tất cả', emoji: '🍽️', count: db.getDishes().length },
+    ...allCategories().map((name) => ({
+      name,
+      label: name,
+      emoji: CATEGORY_META[name]?.emoji ?? '🍴',
+      count: categoryCount(name),
+    })),
+  ]
+
+  dom.categoryRow.innerHTML = items
     .map(
-      (name) => `
+      (item) => `
       <button
         type="button"
-        class="chip ${name === ui.activeCategory ? 'active' : ''}"
-        data-category="${escapeHtml(name)}"
-        aria-pressed="${name === ui.activeCategory}"
+        class="category${item.name === ui.activeCategory ? ' active' : ''}"
+        data-category="${escapeHtml(item.name)}"
+        aria-pressed="${item.name === ui.activeCategory}"
       >
-        ${escapeHtml(name)}
-        <span>${name === 'Tất cả' ? db.getDishes().length : counts[name]}</span>
+        <span class="category-circle" aria-hidden="true">${item.emoji}</span>
+        <span class="category-label">${escapeHtml(item.label)}</span>
+        <span class="category-count">${item.count} món</span>
       </button>`,
     )
     .join('')
 }
 
-function visibleDishes() {
-  const keyword = ui.keyword.trim().toLowerCase()
-  return db
-    .getDishes()
-    .filter((dish) => {
-      const matchCategory =
-        ui.activeCategory === 'Tất cả' || dish.category === ui.activeCategory
-      const matchKeyword =
-        !keyword ||
-        dish.name.toLowerCase().includes(keyword) ||
-        dish.description.toLowerCase().includes(keyword)
-      return matchCategory && matchKeyword
-    })
+const SORTERS = {
+  popular: (a, b) => b.sold - a.sold,
+  rating: (a, b) => b.rating - a.rating || b.ratingCount - a.ratingCount,
+  'price-asc': (a, b) => a.price - b.price,
+  'price-desc': (a, b) => b.price - a.price,
 }
 
-function dishCard(dish) {
+function visibleDishes() {
+  const keyword = ui.keyword.trim().toLowerCase()
+
+  const list = db.getDishes().filter((dish) => {
+    if (ui.activeCategory !== 'all' && dish.category !== ui.activeCategory) {
+      return false
+    }
+    if (!keyword) return true
+    return (
+      dish.name.toLowerCase().includes(keyword) ||
+      dish.description.toLowerCase().includes(keyword) ||
+      dish.category.toLowerCase().includes(keyword)
+    )
+  })
+
+  return list.sort(SORTERS[ui.sort] ?? SORTERS.popular)
+}
+
+function renderActiveFilters() {
+  const chips = []
+  if (ui.activeCategory !== 'all') {
+    chips.push({
+      key: 'category',
+      label: CATEGORY_META[ui.activeCategory]?.label ?? ui.activeCategory,
+    })
+  }
+  if (ui.keyword.trim()) {
+    chips.push({ key: 'keyword', label: `“${ui.keyword.trim()}”` })
+  }
+
+  if (!chips.length) {
+    dom.activeFilters.hidden = true
+    dom.activeFilters.innerHTML = ''
+    return
+  }
+
+  dom.activeFilters.hidden = false
+  dom.activeFilters.innerHTML = `
+    <span>Lọc theo:</span>
+    ${chips
+      .map(
+        (chip) =>
+          `<button type="button" class="filter-chip" data-clear="${chip.key}">${escapeHtml(chip.label)} <i aria-hidden="true">&times;</i></button>`,
+      )
+      .join('')}
+    <button type="button" class="filter-clear" data-clear="all">Xoá tất cả</button>`
+}
+
+/* Ảnh hỏng thì lùi về biểu tượng, không để lỗ hổng trên thẻ món. */
+function watchBrokenImages() {
+  window.addEventListener(
+    'error',
+    (event) => {
+      const node = event.target
+      if (!(node instanceof HTMLImageElement)) return
+      node.hidden = true
+      const fallback = node.parentElement?.querySelector('.product-emoji')
+      if (fallback) fallback.hidden = false
+    },
+    true,
+  )
+}
+
+/** Ảnh món nếu có, không có thì dùng emoji trên nền gradient. */
+function dishMedia(dish, { emoji = 'product-emoji', photo = 'product-photo', alt = '' } = {}) {
+  return `
+    <span class="${emoji}" aria-hidden="true"${dish.image ? ' hidden' : ''}>${escapeHtml(dish.emoji)}</span>
+    ${
+      dish.image
+        ? `<img class="${photo}" src="${escapeHtml(dish.image)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
+        : ''
+    }`
+}
+
+function productCard(dish) {
   const status = DISH_STATUS[dish.status] ?? DISH_STATUS.available
   const soldOut = dish.status === 'unavailable'
   const inCart = cart.getItems().find((item) => item.dishId === dish.id)
+  const hasDiscount = dish.originalPrice > dish.price
+  const discount = hasDiscount
+    ? Math.round((1 - dish.price / dish.originalPrice) * 100)
+    : 0
+  const rating = dish.rating || DEFAULT_RATING
 
   return `
-    <article class="dish ${soldOut ? 'is-soldout' : ''}">
-      <div class="dish-art" style="background:${accentOf(dish.accent).css}">
-        <span class="dish-emoji" aria-hidden="true">${escapeHtml(dish.emoji)}</span>
-        <span class="dish-status">${status.label}</span>
+    <article class="product${soldOut ? ' is-soldout' : ''}">
+      <div class="product-media" style="background:${accentOf(dish.accent).css}">
+        ${dishMedia(dish, { alt: dish.name })}
+        ${discount ? `<span class="product-discount">-${discount}%</span>` : ''}
+        <span class="product-status">${status.label}</span>
+        ${inCart ? `<span class="product-incart" title="Trong giỏ">${inCart.qty}</span>` : ''}
+      </div>
+
+      <div class="product-body">
+        <h3 class="product-name">${escapeHtml(dish.name)}</h3>
+
+        <div class="product-rating">
+          <svg viewBox="0 0 24 24" class="star" aria-hidden="true"><path d="m12 3 2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-3-5.3 3 1.1-6L3.4 9.4l6-.8L12 3Z" /></svg>
+          <b>${rating.toFixed(1)}</b>
+          <span>(${dish.ratingCount} đánh giá)</span>
+        </div>
+
+        <p class="product-desc">${escapeHtml(dish.description)}</p>
+
         ${
-          inCart
-            ? `<span class="dish-incart" title="Đã có trong giỏ">${inCart.qty}</span>`
+          dish.tags.length
+            ? `<div class="product-tags">${dish.tags
+                .map(
+                  (tag) =>
+                    `<span class="tag tag-${(DISH_TAGS[tag] ?? {}).tone ?? 'new'}">${(DISH_TAGS[tag] ?? {}).label ?? tag}</span>`,
+                )
+                .join('')}</div>`
             : ''
         }
-      </div>
-      <div class="dish-info">
-        <div class="dish-meta">
-          <span>${escapeHtml(dish.category)}</span>
-          <span class="dish-sold">${dish.sold} lượt bán</span>
+
+        <div class="product-foot">
+          <div class="product-price">
+            <b>${money(dish.price)}</b>
+            ${hasDiscount ? `<s>${money(dish.originalPrice)}</s>` : ''}
+          </div>
+          <button
+            type="button"
+            class="add-btn"
+            data-add="${dish.id}"
+            ${soldOut ? 'disabled' : ''}
+            aria-label="Thêm ${escapeHtml(dish.name)} vào giỏ"
+          >
+            ${soldOut ? '<span aria-hidden="true">—</span>' : '<span aria-hidden="true">+</span>'}
+          </button>
         </div>
-        <h3>${escapeHtml(dish.name)}</h3>
-        <p class="dish-desc">${escapeHtml(dish.description)}</p>
-      </div>
-      <div class="dish-foot">
-        <span class="price">${money(dish.price)}</span>
-        <button
-          type="button"
-          class="btn btn-sm ${soldOut ? 'btn-disabled' : 'btn-primary'}"
-          data-add="${dish.id}"
-          ${soldOut ? 'disabled' : ''}
-        >
-          ${soldOut ? 'Hết món' : 'Thêm giỏ'}
-        </button>
       </div>
     </article>`
 }
 
 function renderMenu() {
   const dishes = visibleDishes()
+  const all = db.getDishes()
+  const total = all.reduce((sum, dish) => sum + dish.sold, 0)
 
-  dom.menuGrid.innerHTML = dishes.length
-    ? dishes.map(dishCard).join('')
-    : `<p class="empty-state">Không tìm thấy món nào phù hợp. Thử từ khoá khác nhé.</p>`
+  dom.heroDishCount.textContent = all.length
+  dom.menuSummary.textContent = ui.keyword.trim()
+    ? `Tìm thấy ${dishes.length} món cho “${ui.keyword.trim()}”.`
+    : `${all.length} món đang sẵn sàng · ${numberFmt.format(total)} lượt bán từ trước đến nay`
 
-  $$('[data-add]', dom.menuGrid).forEach((button) => {
-    button.addEventListener('click', () => addToCart(button.dataset.add))
-  })
+  if (!dishes.length) {
+    dom.menuGrid.innerHTML = `
+      <div class="empty-state">
+        <p>Không tìm thấy món nào phù hợp.</p>
+        <button type="button" class="btn btn-outline" data-clear="all">Xoá bộ lọc</button>
+      </div>`
+    return
+  }
+
+  dom.menuGrid.innerHTML = dishes.map(productCard).join('')
 }
 
 function addToCart(dishId) {
   const dish = db.getDish(dishId)
-  const result = cart.add(dishId)
-
-  if (!result.ok) {
-    if (result.reason === 'unavailable') {
-      toast(`“${dish.name}” đang tạm ngưng.`, 'danger')
-    } else {
-      toast('Không tìm thấy món này nữa.', 'danger')
-    }
+  if (!dish) {
+    toast('Không tìm thấy món này nữa.', 'danger')
     renderMenu()
-    renderCart()
+    return
+  }
+
+  const result = cart.add(dishId)
+  if (!result.ok) {
+    toast(
+      result.reason === 'unavailable'
+        ? `“${dish.name}” đang tạm ngưng.`
+        : 'Không tìm thấy món này nữa.',
+      'danger',
+    )
+    renderMenu()
     return
   }
 
@@ -200,7 +325,6 @@ function addToCart(dishId) {
     toast(`Đã thêm “${dish.name}” vào giỏ.`, 'success')
   }
   renderMenu()
-  renderCart()
 }
 
 /* ------------------------------------------------------------------ cart */
@@ -235,7 +359,10 @@ function renderCart() {
     .map(
       (line) => `
       <div class="cart-line">
-        <span class="cart-thumb" style="background:${accentOf(line.dish.accent).css}" aria-hidden="true">${escapeHtml(line.dish.emoji)}</span>
+        <span class="cart-thumb" style="background:${accentOf(line.dish.accent).css}">${dishMedia(line.dish, {
+          emoji: 'cart-thumb-emoji',
+          photo: 'cart-thumb-photo',
+        })}</span>
         <div class="cart-line-info">
           <strong>${escapeHtml(line.dish.name)}</strong>
           <span class="cart-line-price">${money(line.dish.price)}</span>
@@ -582,9 +709,17 @@ function logout() {
 
 function cacheDom() {
   Object.assign(dom, {
-    filters: $('#menu-filters'),
-    search: $('#menu-search'),
+    locationBtn: $('#location-btn'),
+    locationMenu: $('#location-menu'),
+    locationLabel: $('#location-label'),
+    search: $('#header-search'),
+    searchClear: $('#search-clear'),
+    categoryRow: $('#category-row'),
+    sortTabs: $('#sort-tabs'),
+    menuSummary: $('#menu-summary'),
+    activeFilters: $('#active-filters'),
     menuGrid: $('#menu-grid'),
+    heroDishCount: $('#hero-dish-count'),
     cartBtn: $('#cart-btn'),
     cartClose: $('#cart-close'),
     cartCount: $('#cart-count'),
@@ -602,6 +737,7 @@ function cacheDom() {
     accountLabel: $('#account-label'),
     authModal: $('#auth-modal'),
     authTitle: $('#auth-title'),
+    authHint: $('#auth-hint'),
     tabs: $('#auth-tabs'),
     loginForm: $('#login-form'),
     registerForm: $('#register-form'),
@@ -622,18 +758,101 @@ function cacheDom() {
   })
 }
 
+function renderLocation() {
+  dom.locationLabel.textContent = ui.location
+  dom.locationMenu.innerHTML = LOCATIONS.map(
+    (name) => `
+      <button type="button" class="location-item" role="option"
+        aria-selected="${name === ui.location}" data-location="${escapeHtml(name)}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-5.4-7-11a7 7 0 0 1 14 0c0 5.6-7 11-7 11Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+        <span>${escapeHtml(name)}</span>
+        ${name === ui.location ? '<i aria-hidden="true">✓</i>' : ''}
+      </button>`,
+  ).join('')
+}
+
+function toggleLocationMenu(force) {
+  const open = force ?? dom.locationMenu.hidden
+  dom.locationMenu.hidden = !open
+  dom.locationBtn.setAttribute('aria-expanded', String(open))
+}
+
 function bindEvents() {
-  dom.filters.addEventListener('click', (event) => {
-    const chip = event.target.closest('[data-category]')
-    if (!chip) return
-    ui.activeCategory = chip.dataset.category
-    renderFilters()
-    renderMenu()
+  watchBrokenImages()
+
+  /* Nút thêm giỏ dùng chung cho thẻ món và banner khuyến mãi. */
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-add]')
+    if (button && !button.disabled) addToCart(button.dataset.add)
+  })
+
+  dom.locationBtn.addEventListener('click', () => toggleLocationMenu())
+  dom.locationMenu.addEventListener('click', (event) => {
+    const item = event.target.closest('[data-location]')
+    if (!item) return
+    ui.location = item.dataset.location
+    renderLocation()
+    toggleLocationMenu(false)
+    toast(`Giao đến ${ui.location}.`, 'brand')
   })
 
   dom.search.addEventListener('input', (event) => {
     ui.keyword = event.target.value
+    dom.searchClear.hidden = !ui.keyword
+    renderActiveFilters()
     renderMenu()
+  })
+
+  dom.searchClear.addEventListener('click', () => {
+    dom.search.value = ''
+    ui.keyword = ''
+    dom.searchClear.hidden = true
+    renderActiveFilters()
+    renderMenu()
+  })
+
+  dom.categoryRow.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-category]')
+    if (!button) return
+    ui.activeCategory = button.dataset.category
+    renderCategories()
+    renderActiveFilters()
+    renderMenu()
+  })
+
+  dom.sortTabs.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-sort]')
+    if (!button) return
+    ui.sort = button.dataset.sort
+    $$('[data-sort]', dom.sortTabs).forEach((item) => {
+      const on = item === button
+      item.classList.toggle('active', on)
+      item.setAttribute('aria-pressed', String(on))
+    })
+    renderMenu()
+  })
+
+  const clearFilter = (key) => {
+    if (key === 'category' || key === 'all') ui.activeCategory = 'all'
+    if (key === 'keyword' || key === 'all') {
+      ui.keyword = ''
+      dom.search.value = ''
+      dom.searchClear.hidden = true
+    }
+    renderCategories()
+    renderActiveFilters()
+    renderMenu()
+  }
+
+  dom.activeFilters.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-clear]')
+    if (button) clearFilter(button.dataset.clear)
+  })
+
+  /* Nút "Xoá bộ lọc" nằm trong thẻ rỗng của lưới món. */
+  dom.menuGrid.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-clear]')
+    if (button) clearFilter(button.dataset.clear)
   })
 
   dom.cartBtn.addEventListener('click', openCart)
@@ -676,33 +895,41 @@ function bindEvents() {
   dom.logoutBtn.addEventListener('click', logout)
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeAll()
+    if (event.key === 'Escape') {
+      closeAll()
+      toggleLocationMenu(false)
+    }
   })
-
-  $$('.main-nav a').forEach((link) =>
-    link.addEventListener('click', () => {
-      $$('.main-nav a').forEach((item) => item.classList.remove('active'))
-      link.classList.add('active')
-    }),
-  )
-}
-
-function renderAll() {
-  renderFilters()
-  renderMenu()
-  renderCart()
-  renderAccount()
 }
 
 export async function startShop() {
   cacheDom()
   bindEvents()
-  await auth.init()
-  renderAll()
 
-  db.subscribe(renderMenu)
+  /* Vẽ cửa hàng trước, không phụ thuộc vào phiên đăng nhập. */
+  renderLocation()
+  renderCategories()
+  renderActiveFilters()
+  renderMenu()
+  renderCart()
+  renderAccount()
+
+  try {
+    await auth.init()
+  } catch (error) {
+    console.error('[CBM FOOD] Không khởi tạo được phiên đăng nhập:', error)
+    dom.authHint.hidden = false
+    dom.authHint.textContent =
+      'Trình duyệt đang chạy không hỗ trợ mã hoá an toàn, nên tính năng tài khoản tạm thời không dùng được. ' +
+      'Bạn vẫn có thể đặt món bình thường. Hãy mở bằng "npm run dev" (localhost) hoặc HTTPS.'
+  }
+
+  renderAccount()
+
+  db.subscribe(() => {
+    renderCategories()
+    renderMenu()
+  })
   cart.subscribe(renderCart)
   auth.subscribe(renderAccount)
 }
-
-export { SHIPPING_FEE, FREE_SHIPPING_THRESHOLD }

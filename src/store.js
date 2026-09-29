@@ -1,5 +1,7 @@
 import {
   CATEGORIES,
+  DEFAULT_RATING,
+  DISH_TAGS,
   MAX_QTY_PER_ITEM,
   SEED_DISHES,
   SEED_ORDERS,
@@ -67,6 +69,43 @@ const state = {
   seq: readSeq(),
 }
 
+/**
+ * Kho món lưu từ bản cũ chưa có giá gốc / đánh giá / nhãn.
+ * Bổ sung metadata từ seed để giao diện mới hiển thị đầy đủ,
+ * nhưng giữ nguyên phần người dùng đã sửa (tên, giá, mô tả, trạng thái).
+ */
+const hasDisplayMeta = (dish) =>
+  Number.isFinite(Number(dish.rating)) && Array.isArray(dish.tags)
+
+function migrateDishes(dishes) {
+  const seedById = new Map(SEED_DISHES.map((dish) => [dish.id, dish]))
+  let changed = false
+
+  const migrated = dishes.map((dish) => {
+    if (hasDisplayMeta(dish)) return dish
+    changed = true
+    const seed = seedById.get(dish.id)
+    return {
+      ...dish,
+      accent: accentOf(String(dish.accent ?? seed?.accent ?? 'orange')).id,
+      emoji: String(dish.emoji ?? seed?.emoji ?? '🍽️').trim() || '🍽️',
+      image: normalizeImage(dish.image ?? seed?.image),
+      originalPrice: Math.max(
+        0,
+        Math.round(Number(dish.originalPrice) || Number(seed?.originalPrice) || 0),
+      ),
+      rating: clampRating(dish.rating, seed?.rating ?? DEFAULT_RATING),
+      ratingCount: Math.max(
+        0,
+        Math.round(Number(dish.ratingCount) || Number(seed?.ratingCount) || 0),
+      ),
+      tags: normalizeTags(dish.tags ?? seed?.tags),
+    }
+  })
+
+  return { dishes: migrated, changed }
+}
+
 function persist() {
   try {
     window.localStorage.setItem(DISHES_KEY, JSON.stringify(state.dishes))
@@ -108,22 +147,78 @@ function nextOrderId() {
   return `CB-${state.seq.order}`
 }
 
-export const sanitizeDish = (input) => ({
-  name: String(input.name ?? '').trim(),
-  category: String(input.category ?? '').trim() || CATEGORIES[0],
-  price: Math.max(0, Math.round(Number(input.price) || 0)),
-  description: String(input.description ?? '').trim(),
-  accent: accentOf(String(input.accent ?? 'orange')).id,
-  emoji: String(input.emoji ?? '🍽️').trim() || '🍽️',
-  status: ['available', 'unavailable', 'runningOut'].includes(input.status)
-    ? input.status
-    : 'available',
-})
+const clampRating = (value, fallback) => {
+  const num = Number(value)
+  if (!Number.isFinite(num) || num <= 0) return fallback
+  return Math.min(5, Math.round(num * 10) / 10)
+}
+
+const normalizeOriginalPrice = (value, previous, price) => {
+  const num = Math.round(Number(value))
+  if (!Number.isFinite(num) || num <= 0) {
+    /* form admin không gửi ô giá gốc -> giữ lại giá gốc đang có */
+    const kept = Math.round(Number(previous))
+    return Number.isFinite(kept) && kept > price ? kept : 0
+  }
+  return Math.max(num, price + 1000)
+}
+
+const normalizeTags = (value) =>
+  (Array.isArray(value) ? value : []).filter((tag) => DISH_TAGS[tag])
+
+/**
+ * Chỉ nhận ảnh ngoài (http/https) hoặc đường dẫn nội bộ bắt đầu bằng "/".
+ * Các giá trị khác bị loại bỏ để không dán được URL nguy hiểm vào thuộc tính src.
+ */
+const normalizeImage = (value) => {
+  const url = String(value ?? '').trim()
+  if (!url || url.length > 500) return ''
+  if (url.startsWith('//')) return ''
+  if (url.startsWith('/')) return url
+  if (!/^https?:\/\/[^\s]+$/i.test(url)) return ''
+  return url
+}
+
+/* Chạy sau khi các hàm chuẩn hoá đã khai báo, rồi ghi lại kho đã bổ sung metadata. */
+{
+  const migration = migrateDishes(state.dishes)
+  state.dishes = migration.dishes
+  if (migration.changed) persist()
+}
+
+export const sanitizeDish = (input, previous = null) => {
+  const price = Math.max(0, Math.round(Number(input.price) || 0))
+
+  return {
+    name: String(input.name ?? '').trim(),
+    category: String(input.category ?? '').trim() || CATEGORIES[0],
+    price,
+    originalPrice: normalizeOriginalPrice(
+      input.originalPrice,
+      previous?.originalPrice,
+      price,
+    ),
+    description: String(input.description ?? '').trim(),
+    accent: accentOf(String(input.accent ?? 'orange')).id,
+    emoji: String(input.emoji ?? '🍽️').trim() || '🍽️',
+    image: normalizeImage(input.image ?? previous?.image),
+    status: ['available', 'unavailable', 'runningOut'].includes(input.status)
+      ? input.status
+      : 'available',
+    rating: clampRating(input.rating, previous?.rating ?? DEFAULT_RATING),
+    ratingCount: Math.max(
+      0,
+      Math.round(Number(input.ratingCount) || previous?.ratingCount || 0),
+    ),
+    tags: normalizeTags(input.tags ?? previous?.tags),
+  }
+}
 
 export function createDish(input) {
   const dish = {
     id: nextDishId(),
     ...sanitizeDish(input),
+    ratingCount: Math.max(1, Math.round(Number(input.ratingCount) || 1)),
     sold: 0,
     createdAt: new Date().toISOString(),
   }
@@ -136,9 +231,10 @@ export function updateDish(id, input) {
   const index = state.dishes.findIndex((dish) => dish.id === id)
   if (index === -1) return null
 
+  const previous = state.dishes[index]
   const dish = {
-    ...state.dishes[index],
-    ...sanitizeDish(input),
+    ...previous,
+    ...sanitizeDish(input, previous),
   }
   state.dishes = state.dishes.map((item, i) => (i === index ? dish : item))
   commit()

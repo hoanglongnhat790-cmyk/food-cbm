@@ -44,6 +44,29 @@ const dateTime = (value) => {
   })
 }
 
+/** Ảnh món nếu có, không có thì dùng biểu tượng trên nền gradient. */
+function adminDishMedia(dish) {
+  if (!dish.image) return `<span class="emoji" aria-hidden="true">${esc(dish.emoji)}</span>`
+  return `
+    <span class="emoji" aria-hidden="true" hidden>${esc(dish.emoji)}</span>
+    <img class="dish-photo" src="${esc(dish.image)}" alt="${esc(dish.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
+}
+
+/* Ảnh hỏng thì lùi về biểu tượng, không để lỗ hổng trên thẻ món. */
+function watchBrokenImages() {
+  window.addEventListener(
+    'error',
+    (event) => {
+      const node = event.target
+      if (!(node instanceof HTMLImageElement)) return
+      node.hidden = true
+      const fallback = node.parentElement?.querySelector('.emoji')
+      if (fallback) fallback.hidden = false
+    },
+    true,
+  )
+}
+
 const shortTime = (value) => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
@@ -152,7 +175,6 @@ const el = {
   gateTitle: $('#gate-title'),
   gateText: $('#gate-text'),
   gateForm: $('#gate-form'),
-  gateFields: $('#gate-fields'),
   gateError: $('#gate-error'),
   gateSubmit: $('#gate-submit'),
   gateHint: $('#gate-hint'),
@@ -320,7 +342,7 @@ function renderTopDishes() {
     .map(
       (dish) => `
       <div class="mini-row">
-        <span class="mini-thumb" style="background:${accentOf(dish.accent).css}">${esc(dish.emoji)}</span>
+        <span class="mini-thumb" style="background:${accentOf(dish.accent).css}">${adminDishMedia(dish)}</span>
         <div class="mini-main">
           <strong>${esc(dish.name)}</strong>
           <span>${esc(dish.category)} · ${esc(money(dish.price))}</span>
@@ -392,7 +414,7 @@ function renderDishList() {
       return `
       <article class="dish-card${dish.status === 'unavailable' ? ' off' : ''}">
         <div class="dish-art" style="background:${accentOf(dish.accent).css}">
-          <span class="emoji" aria-hidden="true">${esc(dish.emoji)}</span>
+          ${adminDishMedia(dish)}
           <span class="dish-code">${esc(dish.id)}</span>
         </div>
         <div class="dish-body">
@@ -518,6 +540,15 @@ function dishForm(dish) {
             </div>
           </div>
 
+          <div class="form-field full" data-field="image">
+            <label for="f-image">Ảnh món (không bắt buộc)</label>
+            <input id="f-image" name="image" type="url" maxlength="500"
+              value="${esc(dish?.image ?? '')}"
+              placeholder="https://... hoặc /images/ten-mon.jpg" />
+            <span class="hint">Bỏ trống để dùng biểu tượng mặc định.</span>
+            <span class="error"></span>
+          </div>
+
           <div class="form-field full" data-field="status">
             <label for="f-status">Trạng thái</label>
             <select id="f-status" name="status">
@@ -608,6 +639,13 @@ function openDishModal(dish) {
           invalid = true
         }
 
+        const image = String(data.get('image') ?? '').trim()
+        setError('image', '')
+        if (image && !/^(https?:\/\/\S+|\/\S*)$/i.test(image)) {
+          setError('image', 'Ảnh phải là đường dẫn bắt đầu bằng http(s) hoặc /.')
+          invalid = true
+        }
+
         if (invalid) {
           $('.form-field.invalid input', form)?.focus()
           return
@@ -620,6 +658,7 @@ function openDishModal(dish) {
           description,
           accent,
           emoji: data.get('emoji') ?? EMOJIS[0],
+          image: data.get('image'),
           status: data.get('status'),
         }
 
@@ -976,13 +1015,23 @@ function render() {
 
 const denyMessage = 'Bạn không có quyền quản trị. Vui lòng đăng nhập tài khoản admin.'
 
+let authBroken = false
+
 function showGate(user) {
   el.shell.hidden = true
   el.gate.hidden = false
-  el.gateForm.hidden = false
-  el.gateFields.hidden = false
+  el.gateForm.hidden = authBroken
   el.gateSubmit.textContent = 'Đăng nhập'
   closeModal()
+  el.gateError.hidden = true
+
+  if (authBroken) {
+    el.gateTitle.textContent = 'Không đăng nhập được'
+    el.gateText.textContent =
+      'Trình duyệt không hỗ trợ mã hoá an toàn nên không thể xác thực. Hãy mở bằng "npm run dev" (localhost) hoặc HTTPS.'
+    el.gateHint.innerHTML = '<a href="/">← Về trang khách hàng</a>'
+    return
+  }
 
   if (user) {
     el.gateTitle.textContent = 'Không đủ quyền'
@@ -994,7 +1043,6 @@ function showGate(user) {
     el.gateHint.innerHTML = `Tài khoản mẫu: <code>${esc(SEED_ADMIN.email)}</code> / <code>${esc(SEED_ADMIN.password)}</code>`
   }
 
-  el.gateError.hidden = true
   $('input[name="email"]', el.gateForm)?.focus()
 }
 
@@ -1061,6 +1109,8 @@ el.logout.addEventListener('click', () => {
 })
 
 /* ------------------------------------------------------------------ events */
+
+watchBrokenImages()
 
 document.addEventListener('click', (event) => {
   const trigger = event.target.closest('[data-action]')
@@ -1164,7 +1214,13 @@ store.subscribe(() => {
 async function bootstrap() {
   ui.view = VIEWS[window.location.hash.replace(/^#\/?/, '')] ? window.location.hash.replace(/^#\/?/, '') : 'dashboard'
 
-  await auth.init()
+  try {
+    await auth.init()
+  } catch (error) {
+    console.error('[CBM FOOD] Không khởi tạo được phiên:', error)
+    authBroken = true
+  }
+
   syncGuard()
 
   auth.subscribe((user) => {

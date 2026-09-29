@@ -5,16 +5,20 @@ import { installGlobals } from './setup.mjs'
 const storage = installGlobals()
 const db = await import('../src/store.js')
 const cart = await import('../src/cart.js')
-const { CATEGORIES, DISH_STATUS } = await import('../src/seed.js')
+const { CATEGORIES, DISH_STATUS, DISH_TAGS } = await import('../src/seed.js')
 
 const reset = () => {
   db.resetData()
   cart.clear()
 }
 
+const SEED_COUNT = db.getDishes().length
+const SEED_MAX_ID = db.getDishes().at(-1).id
+const nextId = (offset = 1) => `MH-${String(Number(SEED_MAX_ID.slice(3)) + offset).padStart(3, '0')}`
+
 const newDish = (overrides = {}) => ({
   name: 'Mì Quảng',
-  category: 'Món nước',
+  category: 'Ăn vặt',
   price: 55000,
   description: 'Mì Quảng đặc sản Quảng Nam.',
   accent: 'ocean',
@@ -139,6 +143,48 @@ describe('dish - sửa món', () => {
     })
     assert.equal(updated.price, 0)
   })
+
+  it('form admin không gửi giá gốc thì giữ nguyên giá gốc cũ', () => {
+    const before = db.getDish('MH-001')
+    assert.ok(before.originalPrice > before.price, 'dữ liệu mẫu phải có giá gốc')
+
+    const updated = db.updateDish('MH-001', {
+      name: before.name,
+      category: before.category,
+      price: before.price,
+      description: before.description,
+      accent: before.accent,
+      emoji: before.emoji,
+      status: before.status,
+    })
+
+    assert.equal(updated.originalPrice, before.originalPrice, 'không được mất giá gốc')
+  })
+
+  it('giá bán tăng vượt giá gốc cũ thì bỏ luôn giá gốc', () => {
+    const before = db.getDish('MH-001')
+    const updated = db.updateDish('MH-001', {
+      name: before.name,
+      category: before.category,
+      price: before.originalPrice + 5000,
+      description: before.description,
+      accent: before.accent,
+      emoji: before.emoji,
+      status: before.status,
+    })
+
+    assert.equal(updated.originalPrice, 0, 'không được hiện giá gốc thấp hơn giá bán')
+  })
+
+  it('giá gốc nhập vào luôn được nâng lên trên giá bán', () => {
+    const before = db.getDish('MH-001')
+    const updated = db.updateDish('MH-001', {
+      ...before,
+      originalPrice: 1000,
+    })
+
+    assert.ok(updated.originalPrice > updated.price)
+  })
 })
 
 describe('dish - xoá món', () => {
@@ -147,7 +193,7 @@ describe('dish - xoá món', () => {
   it('xoá được món khỏi thực đơn', () => {
     assert.equal(db.removeDish('MH-001'), true)
     assert.equal(db.getDish('MH-001'), undefined)
-    assert.equal(db.getDishes().length, 11)
+    assert.equal(db.getDishes().length, SEED_COUNT - 1)
   })
 
   it('xoá món không tồn tại trả về false', () => {
@@ -157,7 +203,7 @@ describe('dish - xoá món', () => {
   it('không xoá nhầm món khác', () => {
     db.removeDish('MH-001')
     assert.ok(db.getDish('MH-002'), 'món khác phải còn nguyên')
-    assert.equal(db.getDishes().length, 11)
+    assert.equal(db.getDishes().length, SEED_COUNT - 1)
   })
 
   it('lịch sử đơn hàng cũ vẫn giữ tên món đã xoá', () => {
@@ -169,19 +215,19 @@ describe('dish - xoá món', () => {
   })
 
   it('mã món mới không bị tái sử dụng sau khi xoá', () => {
-    db.removeDish('MH-012')
+    db.removeDish(SEED_MAX_ID)
     const created = db.createDish(newDish())
-    assert.equal(created.id, 'MH-013', 'không được cấp lại mã của món đã xoá')
+    assert.equal(created.id, nextId(), 'không được cấp lại mã của món đã xoá')
   })
 
   it('xoá món cuối rồi thêm lại vẫn tăng đều', () => {
-    db.removeDish('MH-012')
-    db.removeDish('MH-011')
+    db.removeDish(SEED_MAX_ID)
+    db.removeDish(nextId(-1))
     const a = db.createDish(newDish())
     const b = db.createDish(newDish({ name: 'Bánh xèo' }))
 
-    assert.equal(a.id, 'MH-013')
-    assert.equal(b.id, 'MH-014')
+    assert.equal(a.id, nextId())
+    assert.equal(b.id, nextId(2))
   })
 
   it('mã không bị tái sử dụng sau khi tải lại trang', async () => {
@@ -190,7 +236,7 @@ describe('dish - xoá món', () => {
     const fresh = await import('../src/store.js?reload=seq')
     const created = fresh.createDish(newDish())
 
-    assert.equal(created.id, 'MH-014', 'bộ đếm phải được lưu xuống storage')
+    assert.equal(created.id, nextId(2), 'bộ đếm phải được lưu xuống storage')
   })
 })
 
@@ -221,16 +267,39 @@ describe('dish - ảnh hưởng tới giỏ hàng', () => {
 })
 
 describe('dish - dữ liệu và bảo toàn', () => {
-  it('thực đơn mẫu có 12 món hợp lệ', () => {
+  it('thực đơn mẫu đầy đủ và hợp lệ', () => {
     reset()
     const dishes = db.getDishes()
 
-    assert.equal(dishes.length, 12)
+    assert.equal(dishes.length, 16)
     dishes.forEach((dish) => {
       assert.ok(dish.id && dish.name, 'thiếu id hoặc tên')
       assert.ok(Number.isFinite(dish.price) && dish.price >= 0, `giá sai: ${dish.id}`)
       assert.ok(dish.sold >= 0, `lượt bán âm: ${dish.id}`)
       assert.ok(Object.keys(DISH_STATUS).includes(dish.status), `trạng thái lạ: ${dish.id}`)
+      assert.ok(dish.rating >= 0 && dish.rating <= 5, `điểm sai: ${dish.id}`)
+      assert.ok(dish.ratingCount > 0, `thiếu số đánh giá: ${dish.id}`)
+      assert.ok(Array.isArray(dish.tags), `thiếu nhãn: ${dish.id}`)
+      dish.tags.forEach((tag) => {
+        assert.ok(Object.keys(DISH_TAGS).includes(tag), `nhãn lạ "${tag}" ở ${dish.id}`)
+      })
+      if (dish.originalPrice) {
+        assert.ok(
+          dish.originalPrice > dish.price,
+          `giá gốc phải lớn hơn giá bán: ${dish.id}`,
+        )
+      }
+    })
+  })
+
+  it('mỗi danh mục đều có món để hiển thị', () => {
+    reset()
+    const counts = db.getDishes().reduce((acc, dish) => {
+      acc[dish.category] = (acc[dish.category] ?? 0) + 1
+      return acc
+    }, {})
+    CATEGORIES.forEach((category) => {
+      assert.ok(counts[category] >= 2, `danh mục "${category}" chỉ có ${counts[category] ?? 0} món`)
     })
   })
 
@@ -244,10 +313,10 @@ describe('dish - dữ liệu và bảo toàn', () => {
   it('khôi phục dữ liệu mẫu xoá món do admin thêm', () => {
     reset()
     db.createDish(newDish())
-    assert.equal(db.getDishes().length, 13)
+    assert.equal(db.getDishes().length, SEED_COUNT + 1)
 
     db.resetData()
-    assert.equal(db.getDishes().length, 12)
+    assert.equal(db.getDishes().length, SEED_COUNT)
   })
 
   it('danh mục trong seed khớp với món đang có', () => {
@@ -256,5 +325,70 @@ describe('dish - dữ liệu và bảo toàn', () => {
     CATEGORIES.forEach((category) => {
       assert.ok(used.has(category), `danh mục "${category}" không món nào dùng`)
     })
+  })
+})
+
+describe('dish - nâng cấp kho lưu từ bản cũ', () => {
+  const legacy = [
+    {
+      id: 'MH-001',
+      name: 'Phở bò đặc biệt',
+      category: 'Cơm & Bún',
+      price: 65000,
+      description: 'Nước dùng ninh xương 12 tiếng.',
+      accent: 'orange',
+      emoji: '🍜',
+      status: 'available',
+      sold: 320,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'MH-099',
+      name: 'Bánh xèo của tôi',
+      category: 'Ăn vặt',
+      price: 20000,
+      description: 'Món tự thêm trong admin.',
+      status: 'available',
+      sold: 0,
+      createdAt: '2026-01-02T00:00:00.000Z',
+    },
+  ]
+
+  it('bổ sung metadata hiển thị mà không thêm hay xoá món', async () => {
+    storage.setItem('cbmfood.admin.dishes.v1', JSON.stringify(legacy))
+    const fresh = await import('../src/store.js?reload=migrate')
+
+    const dishes = fresh.getDishes()
+    assert.equal(dishes.length, 2, 'không được tự thêm hoặc xoá món của người dùng')
+
+    dishes.forEach((dish) => {
+      assert.ok(Array.isArray(dish.tags), `thiếu nhãn: ${dish.id}`)
+      assert.ok(dish.rating >= 0 && dish.rating <= 5, `thiếu điểm đánh giá: ${dish.id}`)
+      assert.ok(Number.isInteger(dish.ratingCount), `thiếu số đánh giá: ${dish.id}`)
+      assert.ok(dish.accent, `thiếu màu: ${dish.id}`)
+      assert.ok(dish.emoji, `thiếu biểu tượng: ${dish.id}`)
+      assert.ok(!dish.originalPrice || dish.originalPrice > dish.price, `giá gốc sai: ${dish.id}`)
+    })
+  })
+
+  it('giữ nguyên phần admin đã chỉnh sửa', async () => {
+    storage.setItem('cbmfood.admin.dishes.v1', JSON.stringify(legacy))
+    const fresh = await import('../src/store.js?reload=migrate-keep')
+
+    assert.equal(fresh.getDish('MH-099').name, 'Bánh xèo của tôi')
+    assert.equal(fresh.getDish('MH-099').price, 20000)
+    assert.equal(fresh.getDish('MH-001').price, 65000)
+    assert.equal(fresh.getDish('MH-001').sold, 320)
+  })
+
+  it('ghi kho đã nâng cấp xuống localStorage', async () => {
+    storage.setItem('cbmfood.admin.dishes.v1', JSON.stringify(legacy))
+    await import('../src/store.js?reload=migrate-save')
+
+    const saved = JSON.parse(storage.getItem('cbmfood.admin.dishes.v1'))
+    assert.ok(saved.every((dish) => Array.isArray(dish.tags)), 'phải lưu lại kho đã bổ sung')
+    assert.ok(saved.find((dish) => dish.id === 'MH-001').originalPrice > 0)
+
+    reset()
   })
 })

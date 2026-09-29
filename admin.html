@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Quản trị CBM FOOD - quản lý món ăn và cập nhật trạng thái đơn hàng."
+    />
+    <title>Quản trị CBM FOOD - Admin</title>
+  </head>
+  <body class="admin-body">
+    <div class="admin-shell">
+      <aside class="admin-side">
+        <a href="/" class="admin-brand">
+          <span class="brand-mark">CBM</span>
+          <span class="admin-brand-text">
+            <strong>CBM FOOD</strong>
+            <small>Trang quản trị</small>
+          </span>
+        </a>
+
+        <nav class="admin-nav" aria-label="Menu quản trị">
+          <a href="#/dashboard" data-nav="dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>
+            Tổng quan
+          </a>
+          <a href="#/dishes" data-nav="dishes">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v7a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3V3" /><path d="M7.5 3v18" /><path d="M18 3c-1.5 2-2 4-2 6s.5 3 2 3 2-1 2-3-.5-4-2-6Z" /><path d="M18 12v9" /></svg>
+            Món ăn
+          </a>
+          <a href="#/orders" data-nav="orders">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5L10 21l-2-1.5L6 21Z" /><path d="M9 8h6M9 12h6" /></svg>
+            Đơn hàng
+          </a>
+        </nav>
+
+        <div class="admin-side-foot">
+          <button type="button" class="admin-reset" data-action="reset-data">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></svg>
+            Khôi phục dữ liệu mẫu
+          </button>
+          <a href="/" class="admin-back">← Về trang khách hàng</a>
+        </div>
+      </aside>
+
+      <div class="admin-main">
+        <header class="admin-topbar">
+          <div>
+            <h1 class="admin-page-title" id="page-title">Tổng quan</h1>
+            <p class="admin-page-sub" id="page-sub"></p>
+          </div>
+          <div class="admin-topbar-meta">
+            <div class="admin-user">
+              <span class="admin-avatar">AD</span>
+              <span class="admin-user-text">
+                <strong>Quản trị viên</strong>
+                <small>cbmfood.vn</small>
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <main class="admin-content">
+          <!-- Tổng quan -->
+          <section class="admin-view" data-view="dashboard" hidden>
+            <div class="stat-grid" id="stat-grid"></div>
+
+            <div class="panel-grid">
+              <section class="panel">
+                <header class="panel-head">
+                  <h2>Đơn hàng mới nhất</h2>
+                  <a href="#/orders" class="panel-link">Xem tất cả</a>
+                </header>
+                <div class="panel-body" id="recent-orders"></div>
+              </section>
+
+              <section class="panel">
+                <header class="panel-head">
+                  <h2>Món bán chạy</h2>
+                  <a href="#/dishes" class="panel-link">Quản lý món</a>
+                </header>
+                <div class="panel-body" id="top-dishes"></div>
+              </section>
+            </div>
+          </section>
+
+          <!-- Món ăn -->
+          <section class="admin-view" data-view="dishes" hidden>
+            <div class="view-head">
+              <div class="view-head-text">
+                <h2>Danh sách món ăn</h2>
+                <p id="dish-summary"></p>
+              </div>
+              <button
+                type="button"
+                class="btn btn-primary"
+                data-action="open-dish-new"
+              >
+                <span aria-hidden="true">+</span> Thêm món ăn
+              </button>
+            </div>
+
+            <div class="toolbar">
+              <label class="field-search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <input
+                  type="search"
+                  id="dish-search"
+                  placeholder="Tìm theo tên hoặc mô tả món ăn..."
+                  autocomplete="off"
+                />
+              </label>
+              <select id="dish-category" aria-label="Lọc theo danh mục">
+                <option value="all">Tất cả danh mục</option>
+              </select>
+              <select id="dish-status" aria-label="Lọc theo trạng thái">
+                <option value="all">Tất cả trạng thái</option>
+                <option value="available">Đang bán</option>
+                <option value="runningOut">Sắp hết</option>
+                <option value="unavailable">Tạm ngưng</option>
+              </select>
+              <select id="dish-sort" aria-label="Sắp xếp">
+                <option value="new">Mới nhất</option>
+                <option value="name">Tên A - Z</option>
+                <option value="sold">Bán chạy nhất</option>
+                <option value="price-asc">Giá tăng dần</option>
+                <option value="price-desc">Giá giảm dần</option>
+              </select>
+            </div>
+
+            <div class="card-grid" id="dish-list"></div>
+          </section>
+
+          <!-- Đơn hàng -->
+          <section class="admin-view" data-view="orders" hidden>
+            <div class="view-head">
+              <div class="view-head-text">
+                <h2>Quản lý đơn hàng</h2>
+                <p id="order-summary"></p>
+              </div>
+            </div>
+
+            <div class="toolbar">
+              <label class="field-search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <input
+                  type="search"
+                  id="order-search"
+                  placeholder="Tìm theo mã đơn, tên khách, số điện thoại..."
+                  autocomplete="off"
+                />
+              </label>
+            </div>
+
+            <div class="chip-row" id="order-chips" role="group" aria-label="Lọc theo trạng thái đơn"></div>
+
+            <div class="order-list" id="order-list"></div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div id="modal-root"></div>
+    <div id="toast-root" class="toast-stack" aria-live="polite"></div>
+
+    <script type="module" src="/src/admin.js"></script>
+  </body>
+</html>

@@ -66,6 +66,21 @@ const reset = () => {
   if (!popular.classList.contains('active')) popular.click()
 }
 
+/**
+ * Đóng sạch mọi lớp đang mở. Drawer đóng bằng timer 240ms nên phải chờ
+ * cho timer cũ chạy xong rồi mới ép trạng thái, tránh lọt sang test sau.
+ */
+const resetView = async () => {
+  reset()
+  await tick()
+  $$('.modal:not([hidden]), .drawer:not([hidden])').forEach((node) => {
+    node.classList.remove('is-open')
+    node.hidden = true
+  })
+  $('#overlay').hidden = true
+  document.body.classList.remove('is-locked')
+}
+
 /* ------------------------------------------------------------------- tests */
 
 describe('cửa hàng - dựng trang', () => {
@@ -167,6 +182,38 @@ describe('cửa hàng - lọc, tìm kiếm, sắp xếp', () => {
   })
 })
 
+describe('cửa hàng - modal trên header', () => {
+  it('bấm "Giỏ hàng" thì mở drawer giỏ', async () => {
+    await resetView()
+    $('#cart-btn').click()
+    await tick()
+
+    assert.equal($('#cart-drawer').hidden, false)
+    assert.equal($('#auth-modal').hidden, true, 'không được mở nhầm modal đăng nhập')
+  })
+
+  it('bấm "Đăng nhập" thì mở modal tài khoản', async () => {
+    await resetView()
+    $('#account-btn').click()
+    await tick()
+
+    assert.equal($('#auth-modal').hidden, false)
+    assert.equal($('#login-form').hidden, false, 'mở mặc định tab đăng nhập')
+    assert.equal($('#cart-drawer').hidden, true, 'không được mở nhầm giỏ hàng')
+  })
+
+  it('Escape đóng được modal đăng nhập', async () => {
+    await resetView()
+    $('#account-btn').click()
+    await tick()
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await tick()
+
+    assert.equal($('#auth-modal').hidden, true)
+    assert.equal($('#overlay').hidden, true)
+  })
+})
+
 describe('cửa hàng - giỏ hàng', () => {
   it('bấm nút thêm thì badge giỏ tăng và thẻ món hiện số lượng', () => {
     reset()
@@ -185,8 +232,24 @@ describe('cửa hàng - giỏ hàng', () => {
     assert.ok($('#toasts').textContent.includes(name), 'phải có thông báo đã thêm món')
   })
 
-  it('mở giỏ thấy dòng món, tổng tiền và nút thanh toán', async () => {
+  it('nút thêm ở banner khuyến mãi cũng dùng chung giỏ', () => {
     reset()
+    const banner = $('#menu').closest('body').querySelector('.deal-main [data-add]')
+    assert.ok(banner, 'phải có nút thêm ở banner')
+
+    banner.click()
+
+    assert.equal(cart.count(), 1, 'banner phải thêm vào giỏ')
+    assert.equal($('#cart-count').textContent, '1')
+    assert.equal(
+      cart.getItems()[0].dishId,
+      banner.dataset.add,
+      'phải thêm đúng món của banner',
+    )
+  })
+
+  it('mở giỏ thấy dòng món, tổng tiền và nút thanh toán', async () => {
+    await resetView()
     $('#menu-grid .product .add-btn').click()
     $('#cart-btn').click()
     await tick()
@@ -237,7 +300,7 @@ describe('cửa hàng - giỏ hàng', () => {
 
 describe('cửa hàng - thanh toán', () => {
   it('mở checkout từ giỏ và chốt được đơn', async () => {
-    reset()
+    await resetView()
     $('#menu-grid .product .add-btn').click()
     $('#cart-btn').click()
     await tick()
@@ -262,7 +325,7 @@ describe('cửa hàng - thanh toán', () => {
   })
 
   it('thiếu thông tin bắt buộc thì báo lỗi, không tạo đơn', async () => {
-    reset()
+    await resetView()
     $('#menu-grid .product .add-btn').click()
     $('#cart-btn').click()
     await tick()

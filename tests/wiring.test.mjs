@@ -79,6 +79,32 @@ describe('wiring - admin', () => {
   })
 })
 
+describe('wiring - thuộc tính hidden không bị CSS ghi đè', () => {
+  const css = read('src/style.css')
+
+  it('có rule [hidden] buộc display none', () => {
+    assert.match(
+      css,
+      /\[hidden\]\s*\{[^}]*display:\s*none\s*!important/,
+      'thiếu rule [hidden] — modal/drawer sẽ chặn toàn bộ thao tác chuột',
+    )
+  })
+
+  it('các lớp phủ toàn màn hình đều dùng hidden để ẩn', () => {
+    /* display:grid/flex trên .modal/.drawer sẽ thắng [hidden] của trình duyệt */
+    for (const className of ['modal', 'drawer']) {
+      const rule = css.match(new RegExp(`\\.${className}\\s*\\{[^}]*\\}`))
+      assert.ok(rule, `không tìm thấy rule .${className}`)
+      assert.match(rule[0], /display:\s*(grid|flex)/, `.${className} đang đặt display`)
+    }
+  })
+
+  it('overlay không đặt display nên hidden vẫn ăn', () => {
+    const rule = css.match(/\.overlay\s*\{[^}]*\}/)[0]
+    assert.doesNotMatch(rule, /display:/, '.overlay không được đặt display')
+  })
+})
+
 describe('wiring - cửa hàng dùng chung kho dữ liệu', () => {
   const shop = read('src/shop.js')
   const cart = read('src/cart.js')

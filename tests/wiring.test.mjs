@@ -103,6 +103,32 @@ describe('wiring - thuộc tính hidden không bị CSS ghi đè', () => {
     const rule = css.match(/\.overlay\s*\{[^}]*\}/)[0]
     assert.doesNotMatch(rule, /display:/, '.overlay không được đặt display')
   })
+
+  it('admin có rule [hidden] riêng, không phụ thuộc style.css', () => {
+    const adminCss = read('src/admin.css')
+    assert.match(
+      adminCss,
+      /\[hidden\]\s*\{[^}]*display:\s*none\s*!important/,
+      'admin.css thiếu rule [hidden] — .gate sẽ phủ kín dashboard',
+    )
+  })
+
+  it('lớp phủ toàn màn hình ở admin đều được bảo vệ bởi [hidden]', () => {
+    const adminCss = read('src/admin.css')
+    for (const className of ['gate', 'modal-backdrop']) {
+      const rule = adminCss.match(new RegExp(`\\.${className}\\s*\\{[^}]*\\}`))
+      assert.ok(rule, `không tìm thấy rule .${className}`)
+      assert.match(rule[0], /position:\s*fixed/, `.${className} phải fixed`)
+      assert.match(rule[0], /inset:\s*0/, `.${className} phải phủ kín`)
+      assert.match(rule[0], /display:\s*(grid|flex)/, `.${className} đang đặt display`)
+    }
+  })
+
+  it('admin.js nạp cả style.css và admin.css', () => {
+    const admin = read('src/admin.js')
+    assert.match(admin, /import '\.\/style\.css'/)
+    assert.match(admin, /import '\.\/admin\.css'/)
+  })
 })
 
 describe('wiring - cửa hàng dùng chung kho dữ liệu', () => {

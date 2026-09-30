@@ -1,5 +1,15 @@
 /* Admin - CBM FOOD */
 
+/*
+ * Thuộc tính `hidden` phải thắng mọi rule display bên dưới.
+ * .gate và .modal-backdrop đều position:fixed; inset:0 nên nếu `hidden`
+ * không ăn, chúng phủ kín trang và chặn toàn bộ thao tác chuột.
+ * Khai báo lại ở đây để admin tự đủ, không phụ thuộc style.css.
+ */
+[hidden] {
+  display: none !important;
+}
+
 .admin-body {
   --side: #241a14;
   --side-hover: #3b2a21;

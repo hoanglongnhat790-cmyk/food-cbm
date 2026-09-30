@@ -80,27 +80,50 @@ form.addEventListener('submit', (event) => {
     return
   }
 
-  const selectedOption = dishSelect.options[dishSelect.selectedIndex]
-  const finalDish = selectedOption.value
-  const quantity = Math.max(1, Number(quantityInput.value) || 1)
-  const total = Number(selectedOption.dataset.price || 0) * quantity
-  const orderId = `CBM-${Date.now().toString().slice(-6)}`
+   const selectedOption = dishSelect.options[dishSelect.selectedIndex]
+   const finalDish = selectedOption.value
+   const quantity = Math.max(1, Number(quantityInput.value) || 1)
+   const unitPrice = Number(selectedOption.dataset.price || 0)
+   const total = unitPrice * quantity
+   const orderId = `CBM-${Date.now().toString().slice(-6)}`
 
-  successBox.hidden = false
-  successBox.style.background = '#e9f9ee'
-  successBox.style.borderColor = 'rgba(47, 158, 99, 0.2)'
-  successBox.style.color = '#1d6b43'
-  successBox.innerHTML = `
-    <strong>Đặt hàng thành công!</strong>
-    <p>Mã đơn: <strong>${orderId}</strong></p>
-    <p>${quantity} x ${finalDish} • ${formatCurrency(total)}</p>
-    <p>Chúng tôi sẽ gọi xác nhận trong 2–5 phút để xác nhận thời gian giao hàng.</p>
-  `
+   const order = {
+     id: orderId,
+     dish: finalDish,
+     quantity,
+     unitPrice,
+     total,
+     customerName: name,
+     customerPhone: phone,
+     customerAddress: address,
+     customerNote: document.getElementById('customer-note').value.trim(),
+     createdAt: new Date().toISOString(),
+   }
 
-  form.reset()
-  dishSelect.value = finalDish
-  quantityInput.value = 1
-  updateTotal()
+   try {
+     const stored = localStorage.getItem('cbm_orders')
+     const orders = stored ? JSON.parse(stored) : []
+     orders.push(order)
+     localStorage.setItem('cbm_orders', JSON.stringify(orders))
+   } catch (error) {
+     console.error('Không thể lưu đơn hàng vào LocalStorage:', error)
+   }
+
+   successBox.hidden = false
+   successBox.style.background = '#e9f9ee'
+   successBox.style.borderColor = 'rgba(47, 158, 99, 0.2)'
+   successBox.style.color = '#1d6b43'
+   successBox.innerHTML = `
+     <strong>Đặt hàng thành công!</strong>
+     <p>Mã đơn: <strong>${orderId}</strong></p>
+     <p>${quantity} x ${finalDish} • ${formatCurrency(total)}</p>
+     <p>Chúng tôi sẽ gọi xác nhận trong 2–5 phút để xác nhận thời gian giao hàng.</p>
+   `
+
+   form.reset()
+   dishSelect.value = finalDish
+   quantityInput.value = 1
+   updateTotal()
 })
 
 updateTotal()

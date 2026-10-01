@@ -11,22 +11,45 @@ const PAYMENT_METHODS = {
   bank: { label: 'Chuyển khoản ngân hàng', hint: 'Chuyển trước khi giao hàng' },
 }
 
+const STATUS_FLOW = ['pending', 'delivering', 'completed']
+
 const STATUS_LABELS = {
-  confirmed: 'Đã xác nhận',
-  preparing: 'Đang chuẩn bị',
-  delivering: 'Đang giao hàng',
-  completed: 'Hoàn tất',
+  pending: {
+    label: 'Chờ xác nhận',
+    action: 'Bắt đầu giao hàng',
+    hint: 'Nhà hàng đang xác nhận đơn của bạn',
+  },
+  delivering: {
+    label: 'Đang giao',
+    action: 'Đã giao xong',
+    hint: 'Shipper đang trên đường giao món',
+  },
+  completed: {
+    label: 'Hoàn thành',
+    action: '',
+    hint: 'Cảm ơn bạn đã ủng hộ CBM FOOD',
+  },
 }
+
+const LEGACY_STATUS_MAP = { confirmed: 'pending', preparing: 'delivering' }
 
 function createOrderId() {
   const random = Math.floor(Math.random() * 1000)
   return `CBM${Date.now().toString().slice(-6)}${random}`
 }
 
+function normalizeStatus(status) {
+  if (STATUS_FLOW.includes(status)) return status
+  return LEGACY_STATUS_MAP[status] || 'pending'
+}
+
 export function getOrders() {
   try {
     const parsed = JSON.parse(localStorage.getItem(ORDERS_KEY) || '[]')
-    return Array.isArray(parsed) ? parsed : []
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter(order => order && typeof order === 'object')
+      .map(order => ({ ...order, status: normalizeStatus(order.status) }))
   } catch {
     return []
   }
@@ -34,6 +57,21 @@ export function getOrders() {
 
 function saveOrders(orders) {
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders))
+}
+
+export function getNextStatus(status) {
+  const index = STATUS_FLOW.indexOf(normalizeStatus(status))
+  return index >= 0 && index < STATUS_FLOW.length - 1 ? STATUS_FLOW[index + 1] : null
+}
+
+function updateOrderStatus(id, status) {
+  const orders = getOrders()
+  const order = orders.find(entry => entry.id === id)
+  if (!order) return false
+  order.status = normalizeStatus(status)
+  order.statusUpdatedAt = new Date().toISOString()
+  saveOrders(orders)
+  return true
 }
 
 function renderSummary() {
@@ -76,13 +114,12 @@ function showCheckoutStep() {
 }
 
 function showSuccessStep(order) {
-  const delivery = new Date(order.estimatedAt)
   document.querySelector('#checkoutFormStep').hidden = true
   document.querySelector('#checkoutSuccess').hidden = false
   document.querySelector('#successBody').innerHTML = `
     <span class="success-icon">✓</span>
-    <h2>Đơn hàng đã xác nhận</h2>
-    <p class="success-sub">Cảm ơn ${escapeHtml(order.customer.fullName)}! Chúng tôi đã nhận đơn và đang chuẩn bị món ngon cho bạn.</p>
+    <h2>Đặt hàng thành công</h2>
+    <p class="success-sub">Cảm ơn ${escapeHtml(order.customer.fullName)}! Đơn ${escapeHtml(order.id)} đang chờ nhà hàng xác nhận.</p>
     <span class="success-code">${escapeHtml(order.id)}</span>
     <div class="success-grid">
       <div class="success-card"><span>Giao đến</span><strong>${escapeHtml(order.customer.address)}</strong></div>
@@ -90,10 +127,16 @@ function showSuccessStep(order) {
       <div class="success-card"><span>Thanh toán</span><strong>${escapeHtml(PAYMENT_METHODS[order.payment].label)}</strong></div>
     </div>
     <ol class="order-timeline">
-      <li class="done"><span>✓</span><div><strong>Đã xác nhận</strong><small>${formatTime(new Date(order.createdAt))} · ${formatPrice(order.total)}</small></div></li>
-      <li class="active"><span>2</span><div><strong>Đang chuẩn bị</strong><small>Bếp nhận đơn lúc ${formatTime(new Date(order.createdAt))}</small></div></li>
-      <li><span>3</span><div><strong>Đang giao hàng</strong><small>Dự kiến giao lúc ${formatTime(delivery)}</small></div></li>
-      <li><span>4</span><div><strong>Hoàn tất</strong><small>Cảm ơn bạn đã ủng hộ CBM FOOD</small></div></li>
+      ${STATUS_FLOW.map((step, index) => {
+        const state = index === 0 ? 'done' : index === 1 ? 'active' : ''
+        const detail =
+          index === 0
+            ? `${formatTime(new Date(order.createdAt))} · ${formatPrice(order.total)}`
+            : index === 1
+              ? `Dự kiến giao lúc ${formatTime(new Date(order.estimatedAt))}`
+              : STATUS_LABELS[step].hint
+        return `<li class="${state}"><span>${state === 'done' ? '✓' : index + 1}</span><div><strong>${STATUS_LABELS[step].label}</strong><small>${detail}</small></div></li>`
+      }).join('')}
     </ol>
     <div class="success-actions">
       <button type="button" class="btn btn-primary" data-success-orders>Xem đơn hàng của tôi</button>
@@ -125,6 +168,21 @@ function validateForm() {
   return true
 }
 
+function renderStatusTrack(status) {
+  const current = STATUS_FLOW.indexOf(status)
+  return `<ol class="status-track">${STATUS_FLOW.map((step, index) => {
+    const state = index < current ? 'done' : index === current ? 'active' : ''
+    return `<li class="${state}"><span>${index < current ? '✓' : index + 1}</span><small>${STATUS_LABELS[step].label}</small></li>`
+  }).join('')}</ol>`
+}
+
+function renderStatusActions(order) {
+  const { action, hint } = STATUS_LABELS[order.status]
+  if (order.status === 'completed')
+    return `<div class="order-card-actions"><span class="status-note">${hint}</span></div>`
+  return `<div class="order-card-actions"><button type="button" class="btn btn-sm btn-outline" data-order-advance="${escapeHtml(order.id)}">${action}</button></div>`
+}
+
 function renderOrders() {
   const list = document.querySelector('#ordersList')
   const orders = getOrders()
@@ -147,17 +205,21 @@ function renderOrders() {
       <article class="order-card">
         <div class="order-card-head">
           <span class="order-code">${escapeHtml(order.id)}</span>
-          <span class="status-badge">${escapeHtml(STATUS_LABELS[order.status])}</span>
+          <span class="status-badge ${order.status}">${STATUS_LABELS[order.status].label}</span>
         </div>
         <p class="order-date">${formatDateTime(order.createdAt)} · ${order.items.reduce((sum, item) => sum + item.quantity, 0)} món</p>
+        ${renderStatusTrack(order.status)}
         <ul>
           ${order.items.map(item => `<li><span>${escapeHtml(item.name)} × ${item.quantity}</span><strong>${formatPrice(item.price * item.quantity)}</strong></li>`).join('')}
         </ul>
         <div class="order-card-foot"><span>Giao đến ${escapeHtml(order.customer.address)}</span><strong>${formatPrice(order.total)}</strong></div>
+        ${renderStatusActions(order)}
       </article>`
     )
     .join('')
-  document.querySelector('#ordersTotal').textContent = `Tổng ${orders.length} đơn hàng`
+
+  const countOf = status => orders.filter(order => order.status === status).length
+  document.querySelector('#ordersTotal').textContent = `Tổng ${orders.length} đơn hàng · ${countOf('pending')} chờ xác nhận · ${countOf('delivering')} đang giao · ${countOf('completed')} hoàn thành`
 }
 
 export function openOrders() {
@@ -208,6 +270,14 @@ export function initCheckout() {
       closeOrders()
       document.querySelector('#menu').scrollIntoView({ behavior: 'smooth' })
     }
+
+    const advanceButton = event.target.closest('[data-order-advance]')
+    if (advanceButton) {
+      const id = advanceButton.dataset.orderAdvance
+      const order = getOrders().find(entry => entry.id === id)
+      const next = order && getNextStatus(order.status)
+      if (next && updateOrderStatus(id, next)) renderOrders()
+    }
   })
 
   document.addEventListener('keydown', event => {
@@ -231,7 +301,7 @@ export function initCheckout() {
       id: createOrderId(),
       createdAt: now.toISOString(),
       estimatedAt: new Date(now.getTime() + PREP_MINUTES * 60000).toISOString(),
-      status: 'confirmed',
+      status: 'pending',
       customer: { fullName, phone, address, note },
       payment,
       items: cart.items.map(item => ({ ...item })),

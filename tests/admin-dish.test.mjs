@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { freshModules } from './helpers.mjs'
+import { freshSeed } from './helpers.mjs'
 
 const added = (result, msg) => {
   assert.ok(result && !result.error, msg ?? `them mon that bai: ${result?.error}`)
@@ -8,7 +8,7 @@ const added = (result, msg) => {
 }
 
 test('them mon moi thanh cong', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const before = store.listDishes().length
   const dish = added(
     store.createDish({
@@ -27,7 +27,7 @@ test('them mon moi thanh cong', async () => {
 })
 
 test('them mon khong co ten bi tu choi', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const before = store.listDishes().length
   const result = store.createDish({ name: '   ', price: 1000 })
   assert.ok(result.error, 'phai bao loi')
@@ -35,19 +35,19 @@ test('them mon khong co ten bi tu choi', async () => {
 })
 
 test('gia am bi tu choi thay vi tu chuan thanh 0', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const result = store.createDish({ name: 'Mon gia am', price: -5000 })
   assert.ok(result.error, 'gia am phai bi tu choi')
   assert.equal(store.findDish('Mon gia am'), null)
 })
 
 test('gia khong phai so bi tu choi', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   assert.ok(store.createDish({ name: 'Mon gia rac', price: 'abc' }).error)
 })
 
 test('mon moi co code duy nhat khong trung mon cu', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const a = added(store.createDish({ name: 'Mon A', price: 10000 }))
   const b = added(store.createDish({ name: 'Mon B', price: 10000 }))
   assert.notEqual(a.code, b.code)
@@ -57,7 +57,7 @@ test('mon moi co code duy nhat khong trung mon cu', async () => {
 })
 
 test('sua mon giu nguyen ma va so luot ban', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const original = added(store.createDish({ name: 'Mon Goc', price: 30000 }))
   const updated = added(store.updateDish(original.code, { name: 'Mon Da Sua', price: 45000 }))
   assert.equal(updated.name, 'Mon Da Sua')
@@ -67,25 +67,25 @@ test('sua mon giu nguyen ma va so luot ban', async () => {
 })
 
 test('sua mon khong ton tai bao loi', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   assert.ok(store.updateDish('MH999', { name: 'Khong ton tai' }).error)
 })
 
 test('sua gia am bi tu choi', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const dish = added(store.createDish({ name: 'Mon Gia Am', price: 10000 }))
   assert.ok(store.updateDish(dish.code, { price: -1 }).error)
   assert.equal(store.findDish(dish.code).price, 10000, 'gia bi doi')
 })
 
 test('sua danh muc sai bi tu choi', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const dish = added(store.createDish({ name: 'Mon Danh Muc', price: 10000 }))
   assert.ok(store.updateDish(dish.code, { category: 'khong-ton-tai' }).error)
 })
 
 test('xoa mon that bai', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const dish = added(store.createDish({ name: 'Mon Can Xoa', price: 20000 }))
   const before = store.listDishes().length
   assert.equal(store.deleteDish(dish.code), true)
@@ -94,12 +94,12 @@ test('xoa mon that bai', async () => {
 })
 
 test('xoa mon khong ton tai tra false', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   assert.equal(store.deleteDish('KHONG-CO'), false)
 })
 
 test('dat trang thai hop le va tu choi trang thai sai', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const dish = added(store.createDish({ name: 'Mon Trang Thai', price: 10000 }))
   assert.equal(added(store.setDishStatus(dish.code, 'runningOut')).status, 'runningOut')
   assert.equal(added(store.setDishStatus(dish.code, 'unavailable')).status, 'unavailable')
@@ -107,7 +107,7 @@ test('dat trang thai hop le va tu choi trang thai sai', async () => {
 })
 
 test('doi trang thai khong lam mat mon', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const dish = added(store.createDish({ name: 'Mon Giu Nguyen', price: 10000 }))
   const before = store.listDishes().length
   store.setDishStatus(dish.code, 'unavailable')
@@ -116,13 +116,13 @@ test('doi trang thai khong lam mat mon', async () => {
 })
 
 test('anh khong hop le bi loai bo chu khong lam hong mon', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const dish = added(store.createDish({ name: 'Mon Anh Xau', price: 10000, image: 'javascript:x' }))
   assert.equal(dish.image, '')
 })
 
 test('khoi phuc du lieu mau xoa moi them', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const seedCount = store.listDishes().length
   store.createDish({ name: 'Mon Tam Thoi', price: 10000 })
   store.deleteDish(store.listDishes()[0].code)
@@ -131,7 +131,7 @@ test('khoi phuc du lieu mau xoa moi them', async () => {
 })
 
 test('dung chung ma ma khong ghi de mon khac', async () => {
-  const { store } = await freshModules()
+  const { store } = await freshSeed()
   const a = added(store.createDish({ name: 'Mon A', price: 10000 }))
   const b = added(store.createDish({ name: 'Mon B', price: 20000 }))
   store.updateDish(a.code, { code: b.code, name: 'Mon A Sua' })

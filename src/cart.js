@@ -1,112 +1,120 @@
-import * as db from './store.js'
+import { findDish, listDishes, SHIP_FEE, FREE_SHIP_FROM } from './store.js'
 
-const CART_KEY = 'cbmfood.cart'
-const MAX_QTY = 20
+const STORAGE_KEY = 'cbm.cart.v1'
+
+/** Mỗi món tối đa 20 phần để khách không bấm tăng vô tội vạ. */
+export const MAX_QTY = 20
 
 const read = () => {
   try {
-    const raw = localStorage.getItem(CART_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
+    if (!Array.isArray(raw)) return []
+    return raw
+      .map((item) => ({
+        key: String(item?.key ?? ''),
+        qty: Math.min(MAX_QTY, Math.max(0, Math.floor(Number(item?.qty) || 0))),
+      }))
+      .filter((item) => item.key && item.qty > 0)
   } catch {
     return []
   }
 }
 
-let lines = read().filter((l) => l && typeof l.key === 'string')
+let items = read()
 
-const persist = () => {
+const save = () => {
   try {
-    localStorage.setItem(CART_KEY, JSON.stringify(lines))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
   } catch {
-    /* storage đầy hoặc bị chặn, giỏ vẫn dùng được trong phiên này */
+    /* Safari private mode chặn ghi: giỏ vẫn chạy trong bộ nhớ. */
   }
 }
 
-const rebuild = () =>
-  lines
-    .map((line) => {
-      const dish = db.findDish(line.key)
+/**
+ * Tính lại từng dòng từ dữ liệu món hiện tại, nên giỏ tự loại món đã bị
+ * admin xoá hoặc ngừng bán. Không dùng tên/giá lưu sẵn trong localStorage.
+ */
+const hydrate = () =>
+  items
+    .map(({ key, qty }) => {
+      const dish = findDish(key)
       if (!dish || dish.status === 'unavailable') return null
-      const qty = Math.min(MAX_QTY, Math.max(1, Math.floor(Number(line.qty) || 1)))
       return {
         key: dish.code,
+        qty: Math.min(qty, MAX_QTY),
         name: dish.name,
         price: dish.price,
-        qty,
         image: dish.image,
         emoji: dish.emoji,
       }
     })
     .filter(Boolean)
 
-export const list = () => rebuild()
+export const list = () => hydrate()
 
-export const count = () => rebuild().reduce((sum, l) => sum + l.qty, 0)
+export const count = () => items.reduce((sum, item) => sum + item.qty, 0)
 
-export const subtotal = () => rebuild().reduce((sum, l) => sum + l.price * l.qty, 0)
-
-export const shipping = () => {
-  const sub = subtotal()
-  if (sub === 0) return 0
-  return sub >= db.FREE_SHIP_FROM ? 0 : db.SHIP_FEE
-}
-
-export const total = () => subtotal() + shipping()
-
-export const missingForFreeShip = () => Math.max(0, db.FREE_SHIP_FROM - subtotal())
+export const qtyOf = (key) => items.find((item) => item.key === key)?.qty ?? 0
 
 export const add = (key, qty = 1) => {
-  const dish = db.findDish(key)
-  if (!dish) return { error: 'not-found' }
-  if (dish.status === 'unavailable') return { error: 'unavailable' }
+  const dish = findDish(key)
+  if (!dish) return { error: 'Không tìm thấy món này' }
+  if (dish.status === 'unavailable') return { error: `${dish.name} đang tạm ngưng` }
 
-  /* Không dùng `Number(qty) || 1`: biểu thức đó nuốt mất qty = 0 và biến
-     yêu cầu "không thêm gì" thành thêm 1 món. */
-  const rawQty = Number(qty)
-  if (!Number.isFinite(rawQty)) return { error: 'invalid-qty' }
-  const amount = Math.floor(rawQty)
-  if (amount < 1) return { error: 'invalid-qty' }
+  const step = Math.max(1, Math.floor(Number(qty) || 1))
+  const current = qtyOf(dish.code)
+  const next = Math.min(MAX_QTY, current + step)
+  if (next === current) return { atMax: true, qty: current }
 
-  const existing = lines.find((l) => l.key === dish.code)
-  if (existing) {
-    existing.qty = Math.min(MAX_QTY, existing.qty + amount)
-  } else {
-    lines = [...lines, { key: dish.code, qty: Math.min(MAX_QTY, amount) }]
-  }
-  persist()
-  return { ok: true, lines: list(), count: count() }
+  items = [...items.filter((item) => item.key !== dish.code), { key: dish.code, qty: next }]
+  save()
+  return { qty: next }
 }
 
-export const setQty = (key, qty) => {
-  const rawQty = Number(qty)
-  if (!Number.isFinite(rawQty)) return { error: 'invalid-qty' }
-  const amount = Math.floor(rawQty)
-  if (amount < 1) return remove(key)
-  const line = lines.find((l) => l.key === key)
-  if (!line) return { error: 'not-found' }
-  line.qty = Math.min(MAX_QTY, amount)
-  persist()
-  return { ok: true, lines: list(), count: count() }
+/** changeQty(key, +1/-1). Giảm về 0 = bỏ món khỏi giỏ. */
+export const changeQty = (key, delta) => {
+  const dish = findDish(key)
+  if (!dish) return { error: 'Không tìm thấy món này' }
+
+  const next = qtyOf(dish.code) + delta
+  if (next > MAX_QTY) return { atMax: true, qty: MAX_QTY }
+
+  if (next < 1) {
+    items = items.filter((item) => item.key !== dish.code)
+    save()
+    return { removed: true, qty: 0, name: dish.name }
+  }
+
+  items = items.map((item) =>
+    item.key === dish.code ? { ...item, qty: Math.min(next, MAX_QTY) } : item,
+  )
+  save()
+  return { qty: qtyOf(dish.code) }
 }
 
 export const remove = (key) => {
-  const before = lines.length
-  lines = lines.filter((l) => l.key !== key)
-  if (lines.length === before) return { error: 'not-found' }
-  persist()
-  return { ok: true, lines: list(), count: count() }
+  items = items.filter((item) => item.key !== key)
+  save()
 }
 
 export const clear = () => {
-  lines = []
-  persist()
-  return { ok: true, lines: [], count: 0 }
+  items = []
+  save()
 }
 
+/** Bỏ món không còn trong thực đơn (admin vừa xoá hoặc ngừng bán). */
 export const syncWithMenu = () => {
-  const valid = new Set(db.listActiveDishes().map((d) => d.code))
-  lines = lines.filter((l) => valid.has(l.key))
-  persist()
+  const alive = new Set(listDishes().map((d) => d.code))
+  const next = items.filter((item) => alive.has(item.key))
+  if (next.length === items.length) return false
+  items = next
+  save()
+  return true
 }
+
+export const subtotal = () =>
+  hydrate().reduce((sum, line) => sum + line.price * line.qty, 0)
+
+export const shipping = (sub = subtotal()) => (sub > 0 && sub < FREE_SHIP_FROM ? SHIP_FEE : 0)
+
+export const total = (sub = subtotal()) => sub + shipping(sub)

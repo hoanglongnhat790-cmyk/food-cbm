@@ -530,14 +530,6 @@
   font-size: 16px;
 }
 
-.timeline {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 12.5px;
-  color: var(--text);
-}
-
 .status-actions {
   display: flex;
   gap: 7px;
@@ -689,12 +681,6 @@
 
 .form-grid .span-2 {
   grid-column: 1 / -1;
-}
-
-.picker-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .emoji-grid {

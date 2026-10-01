@@ -187,7 +187,6 @@ const dishCard = (dish) => {
 
 const renderDishes = () => {
   const all = db.listDishes()
-  el.dishSummary.textContent = `${all.length} món · ${all.filter((d) => d.status === 'available').length} đang bán`
 
   const query = state.dishQuery.toLowerCase()
   const rows = all.filter((dish) => {
@@ -196,6 +195,13 @@ const renderDishes = () => {
     if (!query) return true
     return `${dish.name} ${dish.description}`.toLowerCase().includes(query)
   })
+
+  /* Báo cả số đang lọc lẫn tổng, giống trang bán hàng, để thấy bộ lọc
+     đang có hiệu lực. */
+  const available = all.filter((d) => d.status === 'available').length
+  el.dishSummary.textContent = rows.length
+    ? `Hiển thị ${rows.length}/${all.length} món · ${available} đang bán`
+    : `Không có món nào khớp bộ lọc · ${all.length} món trong thực đơn`
 
   el.dishList.innerHTML = rows.length
     ? rows.map(dishCard).join('')
@@ -208,17 +214,19 @@ const statusBadge = (status) => {
 }
 
 const orderCard = (order) => {
-  const actions = db.ORDER_FLOW.map((next) => {
+  const actions = db.ORDER_FLOW.filter((next) => next !== order.status).map((next) => {
     const meta = db.ORDER_STATUS[next]
     return `<button type="button" class="chip" data-action="order-status" data-code="${escape(
       order.code,
     )}" data-status="${next}">${escape(meta.label)}</button>`
   })
-  actions.push(
-    `<button type="button" class="chip" data-action="order-status" data-code="${escape(
-      order.code,
-    )}" data-status="cancelled">Huỷ đơn</button>`,
-  )
+  if (order.status !== 'cancelled') {
+    actions.push(
+      `<button type="button" class="chip" data-action="order-status" data-code="${escape(
+        order.code,
+      )}" data-status="cancelled">Huỷ đơn</button>`,
+    )
+  }
   return `
     <article class="order-card" data-code="${escape(order.code)}">
       <div class="order-top">

@@ -2,146 +2,170 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { freshModules } from './helpers.mjs'
 
-test('them mon vao gio', async () => {
-  const { store, cart } = await freshModules()
-  const dish = store.createDish({ name: 'Pho Bo', price: 50000 })
-  const res = cart.add(dish.code, 2)
-  assert.ok(res.ok, 'them that bai')
-  assert.equal(cart.count(), 2)
-  assert.equal(cart.subtotal(), 100000)
-  assert.equal(cart.list().length, 1)
+test('them mon vao gio rong', async () => {
+  const { cart, store: db } = await freshModules()
+  const dish = db.listDishes()[0]
+  const res = cart.add(dish.code, 1)
+  assert.ok(!res.error)
+  assert.equal(cart.count(), 1)
+  assert.equal(cart.qtyOf(dish.code), 1)
 })
 
-test('them mon khong ton tai bi tu choi', async () => {
-  const { cart } = await freshModules()
-  assert.equal(cart.add('KHONG-CO', 1).error, 'not-found')
+test('them cung mon thi cong don', async () => {
+  const { cart, store: db } = await freshModules()
+  const dish = db.listDishes()[0]
+  cart.add(dish.code, 1)
+  cart.add(dish.code, 2)
+  assert.equal(cart.qtyOf(dish.code), 3)
+  assert.equal(cart.count(), 3)
+  assert.equal(cart.list().length, 1, 'chi gom mot dong')
 })
 
-test('them mon dang ngung ban bi tu choi', async () => {
-  const { store, cart } = await freshModules()
-  const dish = store.createDish({ name: 'Mon Het', price: 30000 })
+test('khong vuot qua MAX_QTY', async () => {
+  const { cart, store: db } = await freshModules()
+  const dish = db.listDishes()[0]
+  cart.add(dish.code, cart.MAX_QTY)
+  const res = cart.add(dish.code, 5)
+  assert.ok(res.atMax, 'phai bao atMax')
+  assert.equal(cart.qtyOf(dish.code), cart.MAX_QTY)
+})
+
+test('them mon khong ton tai bi loi', async () => {
+  const { cart, store: db } = await freshModules()
+  assert.ok(cart.add('KHONG-CO', 1).error)
+})
+
+test('them mon dang tam ngung bi tu choi', async () => {
+  const { cart, store } = await freshModules()
+  const dish = store.createDish({ name: 'Mon Het', price: 10000 })
   store.setDishStatus(dish.code, 'unavailable')
-  assert.equal(cart.add(dish.code, 1).error, 'unavailable')
+  const res = cart.add(dish.code, 1)
+  assert.ok(res.error, 'phai bao loi')
   assert.equal(cart.count(), 0)
 })
 
-test('them mon da co trong gio thi cong don', async () => {
-  const { store, cart } = await freshModules()
-  const dish = store.createDish({ name: 'Bun Bo', price: 45000 })
-  cart.add(dish.code, 1)
+test('tang giam so luong', async () => {
+  const { cart, store: db } = await freshModules()
+  const dish = db.listDishes()[0]
   cart.add(dish.code, 2)
-  assert.equal(cart.list().length, 1, 'phai gop thanh 1 dong')
-  assert.equal(cart.count(), 3)
-  assert.equal(cart.subtotal(), 135000)
+  assert.equal(cart.changeQty(dish.code, 1).qty, 3)
+  assert.equal(cart.changeQty(dish.code, -1).qty, 2)
+  assert.equal(cart.count(), 2)
 })
 
-test('so luong bi gioi han toi da', async () => {
-  const { store, cart } = await freshModules()
-  const dish = store.createDish({ name: 'Mon Gioi Han', price: 10000 })
-  cart.add(dish.code, 999)
-  assert.equal(cart.count(), 20, 'phai gioi han 20')
-})
-
-test('cap nhat so luong', async () => {
-  const { store, cart } = await freshModules()
-  const dish = store.createDish({ name: 'Canh Chua', price: 35000 })
+test('giam ve 0 thi bo dong khoi gio', async () => {
+  const { cart, store: db } = await freshModules()
+  const dish = db.listDishes()[0]
   cart.add(dish.code, 1)
-  cart.setQty(dish.code, 4)
-  assert.equal(cart.count(), 4)
-  assert.equal(cart.subtotal(), 140000)
-})
-
-test('dat so luong 0 thi xoa dong khoi gio', async () => {
-  const { store, cart } = await freshModules()
-  const dish = store.createDish({ name: 'Xoa Khi Zero', price: 25000 })
-  cart.add(dish.code, 2)
-  cart.setQty(dish.code, 0)
+  const res = cart.changeQty(dish.code, -1)
+  assert.ok(res.removed)
   assert.equal(cart.count(), 0)
   assert.equal(cart.list().length, 0)
 })
 
-test('xoa mot mon trong gio', async () => {
-  const { store, cart } = await freshModules()
-  const a = store.createDish({ name: 'Mon A', price: 10000 })
-  const b = store.createDish({ name: 'Mon B', price: 20000 })
-  cart.add(a.code, 1)
-  cart.add(b.code, 1)
-  cart.remove(a.code)
-  assert.equal(cart.list().length, 1)
-  assert.equal(cart.list()[0].name, 'Mon B')
+test('tang vuot MAX_QTY thi bao atMax', async () => {
+  const { cart, store: db } = await freshModules()
+  const dish = db.listDishes()[0]
+  cart.add(dish.code, cart.MAX_QTY)
+  assert.ok(cart.changeQty(dish.code, 1).atMax)
 })
 
-test('xoa mon khong co trong gio tra loi', async () => {
-  const { cart } = await freshModules()
-  assert.equal(cart.remove('KHONG-CO').error, 'not-found')
+test('don gia va tam tien dung gia hien tai', async () => {
+  const { cart, store: db } = await freshModules()
+  const dish = db.listDishes()[0]
+  cart.add(dish.code, 2)
+  const line = cart.list()[0]
+  assert.equal(line.price, dish.price, 'gia phai lay tu store')
+  assert.equal(line.name, dish.name)
+  assert.equal(cart.subtotal(), dish.price * 2)
 })
 
-test('xoa sach gio', async () => {
-  const { store, cart } = await freshModules()
-  cart.add(store.createDish({ name: 'Mon X', price: 10000 }).code, 3)
-  cart.clear()
+test('cong don giu nguyen ma mon', async () => {
+  const { cart, store } = await freshModules()
+  const dish = store.createDish({ name: 'Mon Rename', price: 10000 })
+  cart.add(dish.code, 1)
+  store.updateDish(dish.code, { name: 'Da doi ten', price: 20000 })
+  const line = cart.list()[0]
+  assert.equal(line.name, 'Da doi ten')
+  assert.equal(line.price, 20000)
+  assert.equal(cart.subtotal(), 20000)
+})
+
+test('phi ship va tong tien', async () => {
+  const { cart, store: db } = await freshModules()
+  const dish = db.listDishes()[0]
+  cart.add(dish.code, 1)
+  const sub = cart.subtotal()
+  assert.ok(sub < 150000)
+  assert.equal(cart.shipping(sub), 15000)
+  assert.equal(cart.total(sub), sub + 15000)
+})
+
+test('don duong free ship thi khong tinh phi ship', async () => {
+  const { cart, store: db } = await freshModules()
+  assert.equal(cart.shipping(150000), 0)
+  assert.equal(cart.shipping(200000), 0)
+})
+
+test('gio trong thi khong co phi ship', async () => {
+  const { cart, store: db } = await freshModules()
   assert.equal(cart.count(), 0)
   assert.equal(cart.subtotal(), 0)
-})
-
-test('phi ship thuong 15.000', async () => {
-  const { store, cart } = await freshModules()
-  cart.add(store.createDish({ name: 'Mon Nho', price: 50000 }).code, 1)
-  assert.equal(cart.subtotal(), 50000)
-  assert.equal(cart.shipping(), 15000)
-  assert.equal(cart.total(), 65000)
-})
-
-test('don hang lon du 150.000 thi mien phi ship', async () => {
-  const { store, cart } = await freshModules()
-  cart.add(store.createDish({ name: 'Mon Lon', price: 160000 }).code, 1)
-  assert.equal(cart.shipping(), 0)
-  assert.equal(cart.total(), 160000)
-  assert.equal(cart.missingForFreeShip(), 0)
-})
-
-test('thieu tien thi bao them duoc bao nhieu de mien ship', async () => {
-  const { store, cart } = await freshModules()
-  cart.add(store.createDish({ name: 'Mon Vua', price: 120000 }).code, 1)
-  assert.equal(cart.shipping(), 15000)
-  assert.equal(cart.missingForFreeShip(), 30000)
-})
-
-test('gio rong thi khong thu phi ship', async () => {
-  const { cart } = await freshModules()
-  assert.equal(cart.subtotal(), 0)
-  assert.equal(cart.shipping(), 0)
+  assert.equal(cart.shipping(0), 0)
   assert.equal(cart.total(), 0)
 })
 
-test('mon bi admin xoa thi dong do bien mat khoi gio', async () => {
-  const { store, cart } = await freshModules()
-  const keep = store.createDish({ name: 'Mon Con', price: 20000 })
-  const drop = store.createDish({ name: 'Mon Bi Xoa', price: 30000 })
-  cart.add(keep.code, 1)
-  cart.add(drop.code, 1)
-  store.deleteDish(drop.code)
-  const rows = cart.list()
-  assert.equal(rows.length, 1)
-  assert.equal(rows[0].name, 'Mon Con')
+test('mon da bi admin xoa thi bien khoi gio', async () => {
+  const { cart, store } = await freshModules()
+  const dish = store.createDish({ name: 'Mon Se Xoa', price: 10000 })
+  cart.add(dish.code, 2)
+  assert.equal(cart.count(), 2)
+  store.deleteDish(dish.code)
+  assert.equal(cart.list().length, 0, 'mon khong con trong menu')
 })
 
-test('mon ngung ban thi khong con trong gio', async () => {
-  const { store, cart } = await freshModules()
-  const dish = store.createDish({ name: 'Mon Ngung', price: 30000 })
-  cart.add(dish.code, 1)
-  store.setDishStatus(dish.code, 'unavailable')
+test('syncWithMenu loai bo mon khong con', async () => {
+  const { cart, store } = await freshModules()
+  const keep = store.createDish({ name: 'Mon Giữ', price: 10000 })
+  const gone = store.createDish({ name: 'Mon Mất', price: 10000 })
+  cart.add(keep.code, 1)
+  cart.add(gone.code, 1)
+  store.deleteDish(gone.code)
+  assert.equal(cart.syncWithMenu(), true)
+  assert.equal(cart.list().length, 1)
+  assert.equal(cart.syncWithMenu(), false, 'lan sau khong doi gi')
+})
+
+test('xoá dong khong anh huong dong khac', async () => {
+  const { cart, store: db } = await freshModules()
+  const [a, b] = db.listDishes()
+  cart.add(a.code, 1)
+  cart.add(b.code, 2)
+  cart.remove(a.code)
+  assert.equal(cart.qtyOf(a.code), 0)
+  assert.equal(cart.qtyOf(b.code), 2)
+})
+
+test('xoa het gio', async () => {
+  const { cart, store: db } = await freshModules()
+  cart.add(db.listDishes()[0].code, 1)
+  cart.clear()
+  assert.equal(cart.count(), 0)
   assert.equal(cart.list().length, 0)
 })
 
-test('syncWithMenu loai bo dong khong con trong thuc don', async () => {
-  const { store, cart } = await freshModules()
-  const keep = store.createDish({ name: 'Mon Giu', price: 20000 })
-  const drop = store.createDish({ name: 'Mon Bo', price: 30000 })
-  cart.add(keep.code, 1)
-  cart.add(drop.code, 1)
-  store.deleteDish(drop.code)
-  cart.syncWithMenu()
-  assert.equal(cart.list().length, 1)
-  assert.equal(cart.list()[0].name, 'Mon Giu')
+test('gio duoc luu vao localStorage', async () => {
+  const { cart, store } = await freshModules()
+  const dish = store.createDish({ name: 'Mon Lưu', price: 10000 })
+  cart.add(dish.code, 3)
+  /* Nạp lại module như khi người dùng bấm F5 */
+  const reloaded = await import('../src/cart.js?reload=1')
+  assert.equal(reloaded.qtyOf(dish.code), 3)
+})
+
+test('du lieu gio hong khong lam vo trang', async () => {
+  const { cart, store: db } = await freshModules()
+  localStorage.setItem('cbm.cart.v1', '{khong phai json')
+  const reloaded = await import('../src/cart.js?broken=1')
+  assert.equal(reloaded.count(), 0)
 })

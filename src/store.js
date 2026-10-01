@@ -88,7 +88,7 @@ const seedDish = (item, index) => ({
   emoji: EMOJIS[index % EMOJIS.length],
   status: item.isAvailable === false ? 'unavailable' : 'available',
   image: normalizeImage(item.image),
-  sold: num(item.reviewCount) * 2,
+  sold: 0,
   createdAt: Date.now() - (rawFoods.dishes.length - index) * 60000,
 })
 
@@ -140,6 +140,24 @@ let seq = num(read(SALE_KEY, rawFoods.dishes.length))
 /* Date.now() trùng nhau khi khách đặt nhiều đơn trong cùng 1 mili-giây,
    nên id đơn cần thêm số thứ tự để luôn khác nhau. */
 let orderSeq = num(read(ORDER_SEQ_KEY, 0))
+
+/* Bản cũ seed `sold` bằng `reviewCount * 2`, làm thống kê ra con số 77.342
+   phần dù chưa có đơn nào. Nay `sold` chỉ tính từ đơn thật, nên dữ liệu đã
+   lưu từ trước cần được dựng lại một lần. */
+const migrateSoldFromOrders = (list) => {
+  const legacy = list.length > 0 && list.every((d) => d.sold === num(d.ratingCount) * 2)
+  if (!legacy) return false
+  const totals = new Map()
+  for (const order of orders) {
+    for (const item of order.items ?? []) {
+      if (item?.key) totals.set(item.key, (totals.get(item.key) ?? 0) + num(item.qty))
+    }
+  }
+  dishes = list.map((d) => ({ ...d, sold: totals.get(d.code) ?? 0 }))
+  return true
+}
+
+if (migrateSoldFromOrders(dishes)) write(DISH_KEY, dishes)
 
 const persistDishes = () => write(DISH_KEY, dishes)
 const persistOrders = () => write(ORDER_KEY, orders)
@@ -350,11 +368,5 @@ export const stats = () => {
     top,
   }
 }
-
-export const menuByCategory = () =>
-  CATEGORIES.map((cat) => ({
-    ...cat,
-    dishes: dishes.filter((d) => d.category === cat.id),
-  }))
 
 export const promotions = () => rawFoods.promotions ?? []

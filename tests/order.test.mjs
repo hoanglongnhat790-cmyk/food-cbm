@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { freshModules } from './helpers.mjs'
+import { freshSeed } from './helpers.mjs'
 
 const validCustomer = {
   name: 'Nguyễn Như Quyết',
@@ -9,7 +9,7 @@ const validCustomer = {
 }
 
 const setup = async (dishes = [{ name: 'Phở Bò', price: 50000, qty: 2 }]) => {
-  const ctx = await freshModules()
+  const ctx = await freshSeed()
   const items = dishes.map((d) => {
     const created = ctx.store.createDish({ name: d.name, price: d.price })
     assert.ok(created && !created.error, `tao mon that bai: ${d.name}`)

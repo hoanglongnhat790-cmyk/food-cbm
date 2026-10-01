@@ -133,6 +133,10 @@ function closeAuth() { modal.classList.remove('show'); modal.setAttribute('aria-
 
 const CURRENT_USER_KEY = 'cbmCurrentUser'
 
+function findUserKey(users, email) {
+  return Object.keys(users).find(key => key.toLowerCase() === email)
+}
+
 function getCurrentUser() {
   try {
     const parsed = JSON.parse(localStorage.getItem(CURRENT_USER_KEY) || 'null')
@@ -209,7 +213,7 @@ document.querySelector('#togglePassword').addEventListener('click', () => {
 
 form.addEventListener('submit', event => {
   event.preventDefault()
-  const email = document.querySelector('#email').value.trim()
+  const email = document.querySelector('#email').value.trim().toLowerCase()
   const password = document.querySelector('#password').value
   const name = document.querySelector('#fullName').value.trim()
   const users = JSON.parse(localStorage.getItem('cbmUsers') || '{}')
@@ -217,16 +221,18 @@ form.addEventListener('submit', event => {
     const confirm = document.querySelector('#confirmPassword').value
     if (!name) return message.textContent = 'Vui lòng nhập họ và tên.'
     if (password !== confirm) return message.textContent = 'Mật khẩu nhập lại chưa khớp.'
-    if (users[email]) return message.textContent = 'Email này đã được đăng ký.'
+    if (findUserKey(users, email)) return message.textContent = 'Email này đã được đăng ký.'
     users[email] = { name, password }
     localStorage.setItem('cbmUsers', JSON.stringify(users))
     setMode('login')
     message.textContent = 'Đăng ký thành công! Bạn có thể đăng nhập ngay.'
     document.querySelector('#email').value = email
   } else {
-    if (!users[email] || users[email].password !== password) return message.textContent = 'Email hoặc mật khẩu chưa đúng.'
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({ name: users[email].name, email }))
-    message.textContent = `Xin chào ${users[email].name}! Đăng nhập thành công.`
+    const key = findUserKey(users, email)
+    const account = key ? users[key] : null
+    if (!account || account.password !== password) return message.textContent = 'Email hoặc mật khẩu chưa đúng.'
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({ name: account.name, email }))
+    message.textContent = `Xin chào ${account.name}! Đăng nhập thành công.`
     renderAccount()
     setTimeout(closeAuth, 800)
   }

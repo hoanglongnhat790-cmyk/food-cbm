@@ -26,6 +26,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -877,4 +881,22 @@ body.modal-open { overflow: hidden; }
   .success { padding: 44px 22px 32px; }
   .success-grid { grid-template-columns: 1fr; }
   .orders-modal { padding: 36px 22px 28px; }
+}
+
+/* ===== Account dropdown ===== */
+.account { position: relative; }
+.account-trigger { display: inline-flex; align-items: center; gap: 10px; padding: 5px 16px 5px 5px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--ink); font: inherit; font-size: 15px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.account-trigger:hover { border-color: var(--brand); }
+.account-avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 800; }
+.account-dropdown { position: absolute; z-index: 60; top: calc(100% + 10px); left: 0; width: 240px; padding: 8px; border: 1px solid var(--border); border-radius: 16px; background: #fff; box-shadow: var(--shadow); }
+.account-info { padding: 10px 12px 12px; border-bottom: 1px dashed var(--border); }
+.account-info strong { display: block; color: var(--ink); }
+.account-info small { display: block; margin-top: 2px; color: var(--text); font-size: 13px; word-break: break-all; }
+.account-item { display: block; width: 100%; margin-top: 6px; padding: 10px 12px; border: 0; border-radius: 10px; background: none; color: var(--brand-dark); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.account-item:hover { background: var(--brand-soft); }
+
+@media (max-width: 640px) {
+  .account-name { display: none; }
+  .account-trigger { padding-inline: 5px; }
+  .account-dropdown { width: 210px; }
 }

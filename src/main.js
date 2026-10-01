@@ -23,6 +23,13 @@ app.innerHTML = `
     </nav>
     <div class="header-actions">
       <button class="btn btn-outline btn-login" data-auth="login">Đăng nhập</button>
+      <div class="account" id="account" hidden>
+        <button class="account-trigger" id="accountToggle" type="button" aria-haspopup="true" aria-expanded="false"><span class="account-avatar" id="accountAvatar">A</span><span class="account-name" id="accountName">Tài khoản</span></button>
+        <div class="account-dropdown" id="accountDropdown" role="menu" hidden>
+          <div class="account-info"><strong id="accountInfoName"></strong><small id="accountInfoEmail"></small></div>
+          <button class="account-item" type="button" data-logout role="menuitem">Đăng xuất</button>
+        </div>
+      </div>
       <button class="btn btn-outline" id="openOrders" type="button">Đơn hàng của tôi</button>
       <button class="btn btn-primary cart-btn" id="openCart" type="button"><span>Giỏ hàng</span><span class="cart-count" id="cartCount">0</span></button>
     </div>
@@ -124,12 +131,67 @@ function setMode(nextMode) {
 function openAuth(nextMode = 'login') { setMode(nextMode); modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); document.body.classList.add('modal-open'); setTimeout(() => document.querySelector('#email').focus(), 50) }
 function closeAuth() { modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true'); document.body.classList.remove('modal-open') }
 
+const CURRENT_USER_KEY = 'cbmCurrentUser'
+
+function getCurrentUser() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CURRENT_USER_KEY) || 'null')
+    if (!parsed || !parsed.name) return null
+    const user = { name: parsed.name, email: parsed.email || '' }
+    if (parsed.password) localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user))
+    return user
+  } catch {
+    return null
+  }
+}
+
+function closeAccountMenu() {
+  const dropdown = document.querySelector('#accountDropdown')
+  if (!dropdown || dropdown.hidden) return
+  dropdown.hidden = true
+  document.querySelector('#accountToggle').setAttribute('aria-expanded', 'false')
+}
+
+function toggleAccountMenu() {
+  const dropdown = document.querySelector('#accountDropdown')
+  const isOpen = !dropdown.hidden
+  dropdown.hidden = isOpen
+  document.querySelector('#accountToggle').setAttribute('aria-expanded', String(!isOpen))
+}
+
+function renderAccount() {
+  const user = getCurrentUser()
+  document.querySelector('.btn-login').hidden = Boolean(user)
+  document.querySelector('#account').hidden = !user
+  if (!user) return closeAccountMenu()
+  document.querySelector('#accountAvatar').textContent = user.name.trim().charAt(0).toUpperCase() || 'A'
+  document.querySelector('#accountName').textContent = user.name
+  document.querySelector('#accountInfoName').textContent = user.name
+  document.querySelector('#accountInfoEmail').textContent = user.email
+}
+
+function logout() {
+  localStorage.removeItem(CURRENT_USER_KEY)
+  closeAccountMenu()
+  if (modal.classList.contains('show')) closeAuth()
+  renderAccount()
+}
+
 document.addEventListener('click', event => {
   const authButton = event.target.closest('[data-auth]')
   const tabButton = event.target.closest('[data-tab]')
   if (authButton) { event.preventDefault(); openAuth(authButton.dataset.auth) }
   if (tabButton) { event.preventDefault(); setMode(tabButton.dataset.tab) }
   if (event.target.closest('#closeAuth') || event.target === modal) closeAuth()
+  if (event.target.closest('#accountToggle')) {
+    event.preventDefault()
+    toggleAccountMenu()
+  } else if (event.target.closest('[data-logout]')) {
+    logout()
+    return
+  } else if (!event.target.closest('.account')) {
+    closeAccountMenu()
+  }
   const order = event.target.closest('.order-btn')
   if (order) {
     const dish = dishes.find(entry => entry.id === Number(order.dataset.id))
@@ -163,13 +225,19 @@ form.addEventListener('submit', event => {
     document.querySelector('#email').value = email
   } else {
     if (!users[email] || users[email].password !== password) return message.textContent = 'Email hoặc mật khẩu chưa đúng.'
-    localStorage.setItem('cbmCurrentUser', JSON.stringify(users[email]))
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({ name: users[email].name, email }))
     message.textContent = `Xin chào ${users[email].name}! Đăng nhập thành công.`
+    renderAccount()
     setTimeout(closeAuth, 800)
   }
 })
 
-document.addEventListener('keydown', event => { if (event.key === 'Escape' && modal.classList.contains('show')) closeAuth() })
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return
+  if (!document.querySelector('#accountDropdown').hidden) closeAccountMenu()
+  else if (modal.classList.contains('show')) closeAuth()
+})
 
 initCart({ onCheckout: openCheckout })
 initCheckout()
+renderAccount()

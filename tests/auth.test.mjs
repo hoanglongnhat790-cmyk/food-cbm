@@ -16,6 +16,82 @@ beforeEach(() => {
   STORAGE.clear()
 })
 
+/* Trình duyệt có thể còn dữ liệu admin hỏng từ bản cũ
+   (salt và hash không khớp). Khi đó phải tự tạo lại, nếu không
+   thì không bao giờ đăng nhập được admin. */
+const BROKEN_ADMIN = {
+  id: 'U-admin',
+  name: 'Quản trị viên',
+  email: 'admin@cbmfood.vn',
+  phone: '0900000001',
+  role: 'admin',
+  salt: 'salt-cu-ban-loi',
+  hash: 'hash-cu-ban-loi-khong-khop',
+}
+
+/* Phai nap san du lieu vao storage TRUOC khi import module,
+   vi freshAuth() se xoa sach storage. */
+const authSeededWith = async (users) => {
+  STORAGE.clear()
+  STORAGE.setItem('cbmfood.users', JSON.stringify(users))
+  round += 1
+  const auth = await import(`../src/auth.js?r=${round}`)
+  await auth.init()
+  return auth
+}
+
+test('tu tao lai admin bi hong de dang nhap duoc', async () => {
+  const auth = await authSeededWith([BROKEN_ADMIN])
+  const res = await auth.login({ email: 'admin@cbmfood.vn', password: 'admin123' })
+  assert.ok(!res.error, `admin hong van khong vao duoc: ${res.error}`)
+  assert.equal(res.user.role, 'admin')
+})
+
+test('tu tao lai admin ma khong lam mat tai khoan khach', async () => {
+  const khach = {
+    id: 'U-kh',
+    name: 'Khach Hang',
+    email: 'kh@example.com',
+    phone: '0900000002',
+    role: 'customer',
+    salt: 's-khach',
+    hash: 'h-khach',
+  }
+  const auth = await authSeededWith([BROKEN_ADMIN, khach])
+  const emails = auth.listUsers().map((u) => u.email)
+  assert.ok(emails.includes('kh@example.com'), 'tai khoan khach phai con nguyen')
+  assert.equal(auth.listUsers().filter((u) => u.role === 'admin').length, 1, 'chi co mot admin')
+})
+
+test('admin hop le thi giu nguyen, khong tao lai', async () => {
+  /* Tao admin hop le truoc, lay salt/hash that tu storage. */
+  const first = await freshAuth()
+  const good = JSON.parse(STORAGE.getItem('cbmfood.users')).find((u) => u.role === 'admin')
+
+  const auth = await authSeededWith([good])
+  const after = JSON.parse(STORAGE.getItem('cbmfood.users')).find((u) => u.role === 'admin')
+  assert.equal(after.salt, good.salt, 'salt phai giu nguyen')
+  assert.equal(after.hash, good.hash, 'hash phai giu nguyen')
+  const res = await auth.login({ email: 'admin@cbmfood.vn', password: 'admin123' })
+  assert.ok(!res.error, 'van phai dang nhap duoc')
+  assert.ok(first)
+})
+
+test('tai khoan khach dang nhap duoc sau khi tao lai admin', async () => {
+  const khach = {
+    id: 'U-kh',
+    name: 'Khach Hang',
+    email: 'kh@example.com',
+    phone: '0900000002',
+    role: 'customer',
+    salt: 's-khach',
+    hash: 'h-khach',
+  }
+  const auth = await authSeededWith([BROKEN_ADMIN, khach])
+  const res = await auth.login({ email: 'kh@example.com', password: 'batky' })
+  assert.equal(res.error, 'Mật khẩu không đúng', 'hash cu tai khoan khach bi ghi de')
+})
+
 test('khoi tao se tao san tai khoan admin', async () => {
   const auth = await freshAuth()
   const admins = auth.listUsers().filter((u) => u.role === 'admin')

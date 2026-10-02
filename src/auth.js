@@ -62,23 +62,37 @@ const validPhone = (value) => {
 let users = read(USER_KEY, [])
 
 const seedAdminIfMissing = async () => {
-  if (users.some((u) => u.role === 'admin')) return
+  const admin = users.find((u) => u.role === 'admin')
+
+  /* Trước đây chỉ cần "đã có admin" là bỏ qua. Nhưng dữ liệu lưu từ
+     bản cũ có thể hỏng (salt và hash không khớp), khiến admin không
+     đăng nhập được mà không có cách nào khôi phục ngoài việc xoá dữ liệu
+     trình duyệt. Nay kiểm tra mật khẩu thật, hỏng thì tạo lại. */
+  if (admin?.salt && admin?.hash) {
+    try {
+      const check = await hashPassword(SEED_ADMIN.password, admin.salt)
+      if (check === admin.hash) return
+    } catch {
+      /* Không kiểm tra được thì cứ tạo lại cho chắc. */
+    }
+  }
+
   /* Salt phải là CÙNG một giá trị dùng để hash và để lưu.
      Trước đây hash dùng salt cố định còn lưu salt ngẫu nhiên nên
      mật khẩu admin không bao giờ khớp khi đăng nhập lại. */
   const salt = randomSalt()
-  users = [
-    {
-      id: SEED_ADMIN.id,
-      name: SEED_ADMIN.name,
-      email: SEED_ADMIN.email,
-      phone: SEED_ADMIN.phone,
-      role: 'admin',
-      salt,
-      hash: await hashPassword(SEED_ADMIN.password, salt),
-    },
-    ...users,
-  ]
+  const fresh = {
+    id: SEED_ADMIN.id,
+    name: SEED_ADMIN.name,
+    email: SEED_ADMIN.email,
+    phone: SEED_ADMIN.phone,
+    role: 'admin',
+    salt,
+    hash: await hashPassword(SEED_ADMIN.password, salt),
+  }
+  /* Thay đúng một admin hỏng, giữ nguyên các tài khoản khách đã đăng ký. */
+  const index = users.findIndex((u) => u.role === 'admin')
+  users = index === -1 ? [fresh, ...users] : users.map((u, i) => (i === index ? fresh : u))
   write(USER_KEY, users)
 }
 

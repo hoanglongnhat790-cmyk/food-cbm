@@ -276,7 +276,6 @@ svg {
   background: linear-gradient(150deg, #ff9a62, var(--brand));
   color: #fff;
   text-align: center;
-  overflow: hidden;
 }
 
 .hero-card-main::before {
@@ -697,17 +696,20 @@ svg {
 /* ===== Food photos + authentication ===== */
 .header-actions { display: flex; align-items: center; gap: 10px; }
 .btn-login { white-space: nowrap; }
-.hero-card-main { padding: 0; overflow: hidden; }
+.hero-card-main { padding: 0; 
+ }
 .hero-card-main img { width: 100%; height: 100%; object-fit: cover; }
 .hero-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 28px; background: linear-gradient(transparent 35%, rgba(32, 20, 14, .72)); color: #fff; }
 .hero-overlay strong { font-size: 28px; }
 .hero-overlay span { font-size: 15px; }
-.dish-art { position: relative; overflow: hidden; padding: 0; background: #f6eee8; }
+.dish-art { position: relative; 
+   padding: 0; background: #f6eee8; }
 .dish-art img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
 .dish:hover .dish-art img { transform: scale(1.06); }
 .dish-number { position: absolute; top: 12px; right: 12px; padding: 5px 9px; border-radius: 999px; background: rgba(255,255,255,.88); color: var(--brand); font-weight: 800; font-size: 12px; }
 .about-art { grid-template-columns: 1.3fr .7fr; }
-.about-photo { grid-row: span 2; overflow: hidden; min-height: 360px; border-radius: 24px; box-shadow: var(--shadow); }
+.about-photo { grid-row: span 2; 
+   min-height: 360px; border-radius: 24px; box-shadow: var(--shadow); }
 .about-photo img { width: 100%; height: 100%; object-fit: cover; }
 .about-stat { display: grid; place-items: center; align-content: center; min-height: 165px; border: 1px solid var(--border); border-radius: 24px; background: linear-gradient(150deg, #fff3ea, var(--brand-soft)); text-align: center; }
 .about-count { font-size: 30px; font-weight: 800; color: var(--brand); }
@@ -716,7 +718,9 @@ svg {
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(36, 26, 20, .58); opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s; }
 .modal-backdrop.show { opacity: 1; visibility: visible; }
-body.modal-open { overflow: hidden; }
+body.modal-open { 
+  
+ }
 .auth-modal { position: relative; display: grid; grid-template-columns: .9fr 1.1fr; width: min(900px, 100%); max-height: min(700px, calc(100vh - 40px)); overflow: auto; border-radius: 28px; background: #fff; box-shadow: 0 30px 80px rgba(40, 20, 10, .3); transform: translateY(16px) scale(.98); transition: transform .2s; }
 .modal-backdrop.show .auth-modal { transform: translateY(0) scale(1); }
 .modal-close { position: absolute; z-index: 3; top: 14px; right: 14px; width: 38px; height: 38px; border: 0; border-radius: 50%; background: rgba(255,255,255,.9); color: var(--ink); font-size: 25px; line-height: 1; cursor: pointer; }

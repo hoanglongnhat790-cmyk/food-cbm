@@ -1,0 +1,3093 @@
+:root {
+  --brand: #e8542d;
+  --brand-dark: #c4401f;
+  --brand-soft: #fdeee7;
+  --ink: #2b211c;
+  --text: #6b625c;
+  --bg: #fffaf6;
+  --card: #ffffff;
+  --border: #f0e4db;
+  --green: #2f9e63;
+  --shadow: 0 18px 40px -18px rgba(120, 60, 30, 0.35);
+
+  --sans: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  font: 17px/1.6 var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.5px;
+}
+
+h1 {
+  font-size: 58px;
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: 38px;
+  line-height: 1.2;
+}
+
+h3 {
+  font-size: 20px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg {
+  display: block;
+}
+
+.container {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding-inline: 24px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.2;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition:
+    background 0.25s,
+    color 0.25s,
+    border-color 0.25s,
+    transform 0.15s;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--brand-dark);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--border);
+}
+
+.btn-outline:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.btn-lg {
+  padding: 14px 30px;
+  font-size: 16px;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.btn-light {
+  background: #fff;
+  color: var(--brand);
+}
+
+.btn-light:hover {
+  background: var(--brand-soft);
+}
+
+.btn-outline-light {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.btn-outline-light:hover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.eyebrow {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin-bottom: 12px;
+}
+
+/* Header */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 250, 246, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 72px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  display: block;
+  background: #fdf9f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+}
+
+.brand:hover .brand-logo {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(232, 84, 45, 0.2);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.brand-name {
+  font-weight: 800;
+  color: var(--ink);
+  font-size: 19px;
+  letter-spacing: -0.5px;
+}
+
+.main-nav {
+  display: flex;
+  gap: 28px;
+}
+
+.main-nav a {
+  font-weight: 600;
+  color: var(--text);
+  transition: color 0.2s;
+}
+
+.main-nav a:hover,
+.main-nav a.active {
+  color: var(--brand);
+}
+
+/* Hero */
+.hero {
+  padding: 72px 0 64px;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.hero-content h1 em {
+  font-style: normal;
+  color: var(--brand);
+}
+
+.hero-sub {
+  margin: 20px 0 28px;
+  max-width: 480px;
+  font-size: 18px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.hero-art {
+  position: relative;
+  min-height: 380px;
+}
+
+.hero-card {
+  position: absolute;
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+}
+
+.hero-card-main {
+  inset: 30px 0 40px 20px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  background: linear-gradient(150deg, #ff9a62, var(--brand));
+  color: #fff;
+  text-align: center;
+  overflow: hidden;
+}
+
+.hero-card-main::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 75% 20%,
+      rgba(255, 255, 255, 0.35),
+      transparent 45%);
+}
+
+.hero-card-main .plate {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  border: 2px dashed rgba(255, 255, 255, 0.7);
+  font-size: 34px;
+  font-weight: 800;
+}
+
+.hero-card-main p {
+  position: relative;
+  font-size: 15px;
+  opacity: 0.92;
+}
+
+.hero-card-mini {
+  top: 8px;
+  right: 0;
+  padding: 14px 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.hero-card-mini strong {
+  display: block;
+  font-size: 26px;
+  color: var(--ink);
+}
+
+.hero-card-mini span {
+  font-size: 13px;
+}
+
+.hero-card-tag {
+  left: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.hero-card-tag strong {
+  font-size: 24px;
+  color: var(--brand);
+}
+
+.hero-card-tag span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Features */
+.features {
+  border-block: 1px solid var(--border);
+  background: var(--card);
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  padding-block: 36px;
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.feature-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+}
+
+.feature-fast {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.feature-leaf {
+  background: #e6f6ec;
+  color: var(--green);
+}
+
+.feature-wallet {
+  background: #f2f0ff;
+  color: #5a4bd6;
+}
+
+.feature h3 {
+  margin-bottom: 2px;
+}
+
+.feature p {
+  font-size: 14px;
+}
+
+/* Menu */
+.menu {
+  padding: 80px 0;
+}
+
+.section-head {
+  text-align: center;
+  max-width: 560px;
+  margin: 0 auto 44px;
+}
+
+.section-head h2 {
+  margin-bottom: 10px;
+}
+
+.dish-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.dish {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 22px;
+  transition:
+    box-shadow 0.25s,
+    transform 0.25s;
+}
+
+.dish:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-4px);
+}
+
+.dish-art {
+  display: grid;
+  place-items: center;
+  height: 160px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+}
+
+.dish-art-1 {
+  background: linear-gradient(140deg, #ffb26b, #ff8a3d);
+}
+
+.dish-art-2 {
+  background: linear-gradient(140deg, #ffd08a, #f5a038);
+}
+
+.dish-art-3 {
+  background: linear-gradient(140deg, #e8b48a, #d0884a);
+}
+
+.dish-art-4 {
+  background: linear-gradient(140deg, #f2ad81, #e0713b);
+}
+
+.dish-art-5 {
+  background: linear-gradient(140deg, #ff9b6b, #e85a2d);
+}
+
+.dish-art-6 {
+  background: linear-gradient(140deg, #a8d8c8, #3e8f6b);
+}
+
+.dish h3 {
+  margin-bottom: 6px;
+}
+
+.dish-desc {
+  font-size: 14px;
+  min-height: 44px;
+}
+
+/* Điểm trung bình trên thẻ món. */
+.dish-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.dish-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.price {
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--brand);
+}
+
+/* Đơn của tôi */
+.my-orders {
+  padding: 80px 0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+
+.my-orders-count {
+  text-align: center;
+  margin-bottom: 24px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.my-orders-list {
+  display: grid;
+  gap: 20px;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.my-order {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 22px;
+  background: var(--bg);
+}
+
+.my-order-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.my-order-code {
+  display: block;
+  font-weight: 800;
+  font-size: 19px;
+  color: var(--ink);
+}
+
+.my-order-time {
+  display: block;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.order-pill {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  white-space: nowrap;
+}
+
+.order-pill.is-ok {
+  background: #e6f6ed;
+  color: #1f7a4b;
+}
+
+.order-pill.is-info {
+  background: #e8f2fe;
+  color: #1668c1;
+}
+
+.order-pill.is-warn {
+  background: #fdf1dd;
+  color: #a2660a;
+}
+
+.order-pill.is-off {
+  background: #f1eeec;
+  color: #7c736d;
+}
+
+.my-order-items {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.my-order-items li {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  font-size: 15px;
+}
+
+.my-order-items b {
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.my-order-sum {
+  margin: 16px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px dashed var(--border);
+  display: grid;
+  gap: 6px;
+  font-size: 15px;
+}
+
+.my-order-sum div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.my-order-sum dt,
+.my-order-sum dd {
+  margin: 0;
+}
+
+.my-order-sum .is-total {
+  font-weight: 800;
+  font-size: 17px;
+  color: var(--brand);
+}
+
+.my-order-note,
+.my-order-addr {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.order-track {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 20px 0 0;
+  padding: 0;
+}
+
+.order-step {
+  position: relative;
+  padding-top: 26px;
+  text-align: center;
+}
+
+.order-step::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+}
+
+/* Đường nối xanh ở mốc đã đi qua; mốc đang xử lý vẫn nối được từ phía trước
+   nên đường bên trái (ngang) của nó cũng xanh. */
+.order-step.is-done::before,
+.order-step.is-current::before {
+  background: var(--green);
+}
+
+.order-step:first-child::before {
+  display: none;
+}
+
+.order-dot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  translate: -50% 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  background: var(--card);
+}
+
+.order-step.is-done .order-dot {
+  border-color: var(--green);
+}
+
+.order-step.is-current .order-dot {
+  border-color: var(--brand);
+  background: var(--brand);
+  box-shadow: 0 0 0 5px var(--brand-soft);
+}
+
+.order-step strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.order-step small {
+  display: block;
+  font-size: 12px;
+  color: var(--text);
+  min-height: 1.2em;
+}
+
+.order-step.is-done strong,
+.order-step.is-current strong {
+  color: var(--ink);
+}
+
+.order-cancelled {
+  margin: 20px 0 0;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: #f1eeec;
+  color: #7c736d;
+  font-weight: 600;
+}
+
+.my-order-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+/* ===================== ĐÁNH GIÁ MÓN ===================== */
+
+/* Dải sao chỉ đọc: <i> là phần sao rỗng để chiều rộng không nhảy. */
+.stars {
+  display: inline-flex;
+  gap: 1px;
+  color: #f5a623;
+  font-size: 14px;
+  line-height: 1;
+  font-style: normal;
+}
+
+.stars i {
+  color: var(--border);
+  font-style: normal;
+}
+
+.review-box {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--cream);
+}
+
+.review-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.review-head small {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.review-row {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.review-row:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.review-row.is-done {
+  padding-bottom: 2px;
+}
+
+.review-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.review-comment {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.review-flag {
+  color: #b45309;
+  font-size: 12px;
+}
+
+.review-tools {
+  display: flex;
+  gap: 8px;
+}
+
+.review-dish {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+}
+
+.review-dish small {
+  color: var(--muted);
+}
+
+.star-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.star-btn {
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--border);
+  cursor: pointer;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.star-btn.is-on {
+  color: #f5a623;
+}
+
+.star-btn:hover {
+  transform: scale(1.12);
+}
+
+.star-note {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .review-tools {
+    flex-wrap: wrap;
+  }
+
+  .star-btn {
+    font-size: 26px;
+  }
+
+  .star-note {
+    margin-left: 2px;
+  }
+}
+
+/* ===================== VOUCHER ===================== */
+
+.voucher-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 10px;
+}
+
+.voucher-box input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.voucher-box input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.voucher-tag {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px dashed var(--brand);
+  border-radius: 12px;
+  background: #fff4ef;
+  color: var(--brand);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.voucher-error {
+  margin: 0 0 10px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.cart-sum.is-off b,
+.my-order-sum .is-off dd {
+  color: var(--brand);
+}
+
+.order-gate,
+.order-empty {
+  max-width: 560px;
+  margin: 0 auto;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 22px;
+  padding: 44px 28px;
+  background: var(--bg);
+}
+
+.order-gate p,
+.order-empty p {
+  margin: 10px 0 20px;
+}
+
+.order-gate-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.order-empty-icon {
+  display: block;
+  font-size: 46px;
+  margin-bottom: 10px;
+}
+
+/* Trên điện thoại 4 mốc xếp ngang chật và dễ tràn; chuyển sang dọc. */
+@media (max-width: 640px) {
+  .order-track {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .order-step {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    grid-template-areas: 'dot title' 'dot time';
+    column-gap: 12px;
+    padding-top: 0;
+    padding-bottom: 16px;
+    text-align: left;
+  }
+
+  .order-step::before {
+    top: 18px;
+    bottom: 0;
+    left: 9px;
+    width: 2px;
+    height: auto;
+  }
+
+  /* Dọc: đường nối chạy xuống mốc kế tiếp nên mốc đầu có đường, mốc cuối
+     không. Mốc đang xử lý thì phía sau chưa đi qua nên đường vẫn xám. */
+  .order-step.is-done::before {
+    background: var(--green);
+  }
+
+  .order-step.is-current::before {
+    background: var(--border);
+  }
+
+  .order-step:first-child::before {
+    display: block;
+    top: 9px;
+  }
+
+  .order-step:last-child::before {
+    display: none;
+  }
+
+  .order-dot {
+    grid-area: dot;
+    position: static;
+    translate: none;
+    margin: 2px 0 0;
+  }
+
+  .order-step strong {
+    grid-area: title;
+  }
+
+  .order-step small {
+    grid-area: time;
+  }
+}
+
+/* About */
+.about {
+  padding: 80px 0;
+  background: var(--card);
+  border-block: 1px solid var(--border);
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.about-art {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.about-phone {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  height: 200px;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: linear-gradient(150deg, #fff3ea, var(--brand-soft));
+  text-align: center;
+}
+
+.about-phone:nth-child(2) {
+  transform: translateY(24px);
+}
+
+.about-count {
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.about-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.about-content h2 {
+  margin-bottom: 16px;
+}
+
+.about-content p {
+  margin-bottom: 14px;
+}
+
+.about-content .btn {
+  margin-top: 10px;
+}
+
+/* CTA */
+.cta {
+  padding: 80px 0;
+}
+
+.cta-box {
+  text-align: center;
+  border-radius: 32px;
+  padding: 56px 40px;
+  background: linear-gradient(135deg, var(--brand), #ff7a45);
+  color: #fff;
+}
+
+.cta-box h2 {
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.cta-box p {
+  margin-bottom: 28px;
+  max-width: 480px;
+  margin-inline: auto;
+}
+
+.cta-box .hero-actions {
+  justify-content: center;
+}
+
+/* Footer */
+.site-footer {
+  background: #241a14;
+  color: #d8c9bf;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 1fr 0.8fr;
+  gap: 40px;
+  padding: 56px 24px 40px;
+}
+
+.footer-brand .brand-name {
+  color: #fff;
+}
+
+.footer-brand p {
+  margin-top: 16px;
+  font-size: 14px;
+  max-width: 300px;
+}
+
+.footer-col h4 {
+  color: #fff;
+  margin-bottom: 14px;
+  font-size: 16px;
+}
+
+.footer-col a {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+
+.footer-col a:hover {
+  color: #fff;
+}
+
+.footer-col p {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-block: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: #a9979c;
+}
+
+/* Responsive */
+@media (max-width: 960px) {
+  h1 {
+    font-size: 42px;
+  }
+
+  h2 {
+    font-size: 30px;
+  }
+
+  .hero {
+    padding: 48px 0 40px;
+  }
+
+  .hero-grid,
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-art {
+    min-height: 340px;
+  }
+
+  .features-grid,
+  .dish-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-inner {
+    flex-wrap: wrap;
+    padding-block: 12px;
+  }
+
+  .main-nav {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .features-grid,
+  .dish-grid,
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .about-art {
+    grid-template-columns: 1fr;
+  }
+
+  .about-phone {
+    height: 150px;
+  }
+
+  .about-phone:nth-child(2) {
+    transform: none;
+  }
+
+  .cta-box {
+    padding: 40px 24px;
+  }
+}
+
+/* ===== Food photos + authentication ===== */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-login {
+  white-space: nowrap;
+}
+
+.hero-card-main {
+  padding: 0;
+  overflow: hidden;
+}
+
+.hero-card-main img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 28px;
+  background: linear-gradient(transparent 35%, rgba(32, 20, 14, .72));
+  color: #fff;
+}
+
+.hero-overlay strong {
+  font-size: 28px;
+}
+
+.hero-overlay span {
+  font-size: 15px;
+}
+
+.dish-art {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  background: #f6eee8;
+}
+
+.dish-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .35s ease;
+}
+
+.dish:hover .dish-art img {
+  transform: scale(1.06);
+}
+
+.dish-number {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .88);
+  color: var(--brand);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.about-art {
+  grid-template-columns: 1.3fr .7fr;
+}
+
+.about-photo {
+  grid-row: span 2;
+  overflow: hidden;
+  min-height: 360px;
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+}
+
+.about-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.about-stat {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 165px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: linear-gradient(150deg, #fff3ea, var(--brand-soft));
+  text-align: center;
+}
+
+.about-count {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.about-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.feature-icon {
+  font-size: 25px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(36, 26, 20, .58);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s, visibility .2s;
+}
+
+.modal-backdrop.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+.auth-modal {
+  position: relative;
+  display: grid;
+  grid-template-columns: .9fr 1.1fr;
+  width: min(900px, 100%);
+  max-height: min(700px, calc(100vh - 40px));
+  overflow: auto;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(40, 20, 10, .3);
+  transform: translateY(16px) scale(.98);
+  transition: transform .2s;
+}
+
+.modal-backdrop.show .auth-modal {
+  transform: translateY(0) scale(1);
+}
+
+.modal-close {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .9);
+  color: var(--ink);
+  font-size: 25px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.auth-image {
+  min-height: 560px;
+}
+
+.auth-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.auth-panel {
+  padding: 48px 42px 36px;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 30px;
+  padding: 5px;
+  border-radius: 14px;
+  background: #fff4ed;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auth-tab.active {
+  background: #fff;
+  color: var(--brand);
+  box-shadow: 0 5px 18px rgba(120, 60, 30, .1);
+}
+
+.auth-panel h2 {
+  margin-bottom: 8px;
+}
+
+.auth-subtitle {
+  margin-bottom: 22px;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  outline: none;
+  font: inherit;
+  font-size: 14px;
+  background: #fffaf7;
+}
+
+.form-group input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(232, 84, 45, .1);
+}
+
+.password-wrap {
+  position: relative;
+}
+
+.password-wrap input {
+  padding-right: 60px;
+}
+
+.password-wrap button {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.register-only {
+  display: none;
+}
+
+.register-only.show {
+  display: block;
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.form-message {
+  min-height: 24px;
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.switch-auth {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.switch-auth button {
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 960px) {
+  .auth-modal {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+  }
+
+  .auth-image {
+    display: none;
+  }
+
+  .auth-panel {
+    padding: 40px 32px 30px;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-actions .btn-login {
+    display: none;
+  }
+
+  .header-actions .btn {
+    padding-inline: 14px;
+  }
+
+  .auth-panel {
+    padding: 36px 22px 26px;
+  }
+
+  .about-art {
+    grid-template-columns: 1fr;
+  }
+
+  .about-photo {
+    grid-row: auto;
+    min-height: 250px;
+  }
+}
+
+/* =========================================
+   BỔ SUNG CSS CHO DANH MỤC + KHUYẾN MÃI
+========================================= */
+
+/* =========================
+   DANH MỤC MÓN ĂN
+========================= */
+
+.category-filter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 30px 0 38px;
+}
+
+.category-btn {
+  border: 1px solid #eadfd8;
+  background: #fff;
+  color: #333;
+  padding: 11px 22px;
+  border-radius: 30px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.category-btn:hover {
+  color: #f4512a;
+  border-color: #f4512a;
+  transform: translateY(-2px);
+}
+
+.category-btn.active {
+  background: #f4512a;
+  color: #fff;
+  border-color: #f4512a;
+  box-shadow: 0 6px 16px rgba(244, 81, 42, 0.2);
+}
+
+
+/* =========================
+   BANNER KHUYẾN MÃI
+========================= */
+
+.promo-banner {
+  padding: 55px 0;
+  background: #fff5ef;
+}
+
+.promo-inner {
+  min-height: 230px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 40px 55px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #fff1e9, #ffe4d7);
+  overflow: hidden;
+}
+
+.promo-content {
+  max-width: 650px;
+}
+
+.promo-badge {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 7px 14px;
+  border-radius: 20px;
+  background: #f4512a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.promo-content h2 {
+  margin: 0 0 12px;
+  font-size: 34px;
+  line-height: 1.2;
+  color: #27211f;
+}
+
+.promo-content h2 strong {
+  color: #f4512a;
+}
+
+.promo-content p {
+  margin: 0 0 22px;
+  color: #6f625c;
+  line-height: 1.7;
+}
+
+.promo-content p b {
+  color: #f4512a;
+}
+
+.promo-art {
+  width: 170px;
+  height: 170px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  background: #f4512a;
+  color: #fff;
+  transform: rotate(-8deg);
+  box-shadow: 0 18px 35px rgba(244, 81, 42, 0.25);
+}
+
+.promo-art span {
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.promo-art small {
+  margin-top: 5px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+
+/* =========================
+   MÓN ĂN
+========================= */
+
+.dish {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.dish:hover {
+  transform: translateY(-5px);
+}
+
+.dish-art {
+  position: relative;
+  overflow: hidden;
+}
+
+.dish-art img {
+  width: 100%;
+  height: 220px;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.dish:hover .dish-art img {
+  transform: scale(1.04);
+}
+
+.dish-number {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
+  color: #f4512a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+
+/* =========================
+   NÚT ĐẶT MÓN
+========================= */
+
+.order-btn {
+  cursor: pointer;
+}
+
+.order-btn:hover {
+  transform: translateY(-2px);
+}
+
+
+/* =========================
+   LOGIN USER
+========================= */
+
+.btn-login[data-logged-in="true"] {
+  color: #f4512a;
+  border-color: #f4512a;
+  cursor: default;
+}
+
+
+/* =========================
+   FORM ĐĂNG KÝ
+========================= */
+
+.register-only {
+  display: none;
+}
+
+.register-only.show {
+  display: block;
+}
+
+
+/* =========================
+   MODAL
+========================= */
+
+.modal-backdrop {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: all 0.25s ease;
+}
+
+.modal-backdrop.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+
+/* =========================
+   THÔNG BÁO FORM
+========================= */
+
+.form-message {
+  min-height: 22px;
+  margin: 8px 0 14px;
+  color: #f4512a;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+
+/* =========================
+   PASSWORD
+========================= */
+
+.password-wrap {
+  position: relative;
+}
+
+.password-wrap input {
+  width: 100%;
+  padding-right: 70px;
+}
+
+.password-wrap button {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #f4512a;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 768px) {
+
+  .category-filter {
+    gap: 8px;
+    margin: 22px 0 28px;
+  }
+
+  .category-btn {
+    padding: 9px 15px;
+    font-size: 14px;
+  }
+
+  .promo-inner {
+    flex-direction: column;
+    text-align: center;
+    padding: 35px 25px;
+  }
+
+  .promo-content h2 {
+    font-size: 28px;
+  }
+
+  .promo-art {
+    width: 130px;
+    height: 130px;
+  }
+
+  .promo-art span {
+    font-size: 38px;
+  }
+
+  .dish-art img {
+    height: 190px;
+  }
+
+}
+
+
+@media (max-width: 480px) {
+
+  .category-filter {
+    justify-content: flex-start;
+  }
+
+  .category-btn {
+    padding: 8px 13px;
+    font-size: 13px;
+  }
+
+  .promo-banner {
+    padding: 35px 0;
+  }
+
+  .promo-inner {
+    border-radius: 20px;
+  }
+
+  .promo-content h2 {
+    font-size: 24px;
+  }
+
+}
+
+/* =========================================
+   [hidden] PHẢI ĐƯỢC ÉP display:none
+   Không có rule này thì phần tử [hidden]
+   vẫn hiện vì .btn / .icon-btn đặt display.
+========================================= */
+
+[hidden] {
+  display: none !important;
+}
+
+/* =========================================
+   GIỎ HÀNG + CHECKOUT
+========================================= */
+
+.muted {
+  color: var(--text);
+  font-size: 15px;
+  opacity: 0.75;
+}
+
+.btn-cart {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* =========================================
+   TIM KIEM MON AN
+========================================= */
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 210px;
+}
+
+.search-box .search-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 10px 34px 10px 34px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+.search-box input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search-box input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.search-clear {
+  position: absolute;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.search-clear:hover {
+  background: var(--brand);
+  color: #fff;
+}
+
+.menu-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.result-count {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.result-count.is-empty {
+  color: var(--brand-dark);
+  font-weight: 700;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+@media (max-width: 960px) {
+  .search-box {
+    min-width: 170px;
+  }
+
+  .menu-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .result-count {
+    text-align: center;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Ô tìm kiếm chiếm nguyên hàng trên điện thoại, tránh bóp chữ header. */
+  .search-box {
+    order: -1;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+  }
+}
+
+.cart-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dish-emoji {
+  font-size: 76px;
+  line-height: 1;
+  filter: saturate(0.9);
+}
+
+.dish-art {
+  position: relative;
+}
+
+.dish-flag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(43, 33, 28, 0.82);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dish-flag.is-warn {
+  background: #d98b16;
+}
+
+.dish-tag {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.drawer-backdrop,
+.modal-backdrop-cart {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  background: rgba(43, 33, 28, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.modal-backdrop-cart {
+  place-items: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.cart-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  /* PHẢI cao hơn .drawer-backdrop (z-index 70). Thiếu dòng này thì lớp
+     phủ nền nằm lên trên ngăn kéo: mọi cú bấm trong giỏ rơi xuống backdrop
+     (có data-close) nên thao tác tăng/giảm, xoá, thanh toán đều chỉ đóng
+     giỏ — trang bán hàng không dùng được. */
+  z-index: 71;
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  box-shadow: -20px 0 50px -20px rgba(43, 33, 28, 0.5);
+  animation: slide-in 0.22s ease;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+.cart-head,
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cart-head h2,
+.sheet-head h2 {
+  font-size: 21px;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.cart-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 20px;
+}
+
+.cart-line {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.cart-line-art {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--brand-soft);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.cart-line-art.is-emoji {
+  font-size: 24px;
+}
+
+.cart-head h2 small {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+.cart-empty {
+  margin: 0;
+  text-align: center;
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.ship-progress {
+  display: grid;
+  gap: 7px;
+}
+
+.ship-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.ship-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand), #f39a4b);
+  transition: width 0.25s ease;
+}
+
+.ship-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.ship-text b {
+  color: var(--brand-dark);
+}
+
+.cart-line-main {
+  display: grid;
+  gap: 2px;
+}
+
+.cart-line-main strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.cart-line-main small {
+  opacity: 0.7;
+}
+
+.cart-line-total {
+  color: var(--ink);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+}
+
+.qty span {
+  min-width: 26px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.qty-btn {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.qty-btn:hover {
+  background: var(--brand);
+  color: #fff;
+}
+
+/* Ô số lượng ở bước thanh toán: chỉ hiển thị, không có nút +/- nên không
+   cần viền bo như bản có thể chỉnh trong giỏ. */
+.qty.is-static {
+  min-width: 40px;
+  padding: 6px 8px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  text-align: center;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cart-remove {
+  border: 0;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  opacity: 0.6;
+  /* Trước đây nút này chỉ ôm lấy ký tự "✕" nên chỉ 23x19px,
+     quá nhỏ để bấm trên điện thoại. */
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  font-size: 15px;
+}
+
+.cart-remove:hover {
+  color: var(--brand);
+  opacity: 1;
+  background: var(--brand-soft);
+}
+
+.cart-foot,
+.sheet-foot {
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+
+.cart-sum {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+}
+
+.cart-sum.is-total {
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.cart-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--brand-dark);
+  background: var(--brand-soft);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.btn-block {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.btn-ghost {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn-ghost:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.sheet {
+  width: min(520px, 100%);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.sheet form {
+  display: contents;
+}
+
+.sheet-body {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field > span {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.field textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.form-error {
+  margin: 0;
+  padding: 10px 13px;
+  border-radius: 12px;
+  background: #fdecec;
+  color: #b3261e;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sheet-lines {
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.sheet.is-success {
+  padding: 26px 22px;
+  text-align: center;
+  display: grid;
+  gap: 10px;
+}
+
+.success-mark {
+  width: 58px;
+  height: 58px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  z-index: 90;
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  animation: toast-in 0.2s ease;
+}
+
+.toast.is-err {
+  background: #b3261e;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+}
+
+/* =======================================================
+   RESPONSIVE HOÀN CHỈNH — điện thoại / tablet / máy tính
+   Đặt cuối file để đè lên các breakpoint rời rạc ở trên.
+   Mốc: 1080px (máy tính nhỏ) · 900px (tablet ngang)
+        760px (tablet dọc) · 600px (điện thoại lớn) · 420px (điện thoại nhỏ)
+   ======================================================= */
+
+/* Ngăn tràn ngang do chữ dài / email / mã đơn */
+.dish,
+.cart-line-main,
+.sheet-body p,
+.footer-grid p,
+.about-grid p {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* ----- Máy tính nhỏ & tablet ngang (≤1080px) ----- */
+@media (max-width: 1080px) {
+  .header-inner {
+    gap: 16px;
+  }
+
+  .main-nav {
+    gap: 20px;
+  }
+
+  /* Header bắt đầu vỡ: cho phép xuống hàng thay vì bóp chữ */
+  .header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .search-box {
+    min-width: 150px;
+  }
+}
+
+/* ----- Tablet (≤900px) ----- */
+@media (max-width: 900px) {
+  .container {
+    padding-inline: 20px;
+  }
+
+  h1 {
+    font-size: 40px;
+  }
+
+  h2 {
+    font-size: 30px;
+  }
+
+  .hero-grid,
+  .about-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .hero {
+    padding: 52px 0 44px;
+  }
+
+  .hero-art {
+    min-height: 320px;
+  }
+
+  .features-grid,
+  .dish-grid,
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .footer-grid {
+    gap: 28px;
+  }
+}
+
+/* ----- Tablet dọc & điện thoại lớn (≤760px) ----- */
+@media (max-width: 760px) {
+  /* Header xuống 3 hàng: logo + nút | ô tìm kiếm | menu cuộn ngang */
+  .header-inner {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-block: 8px;
+    min-height: 0;
+  }
+
+  /* Header dính chiếm 26% màn hình điện thoại nếu giữ độ cao cũ,
+     nên thu gọn lại cho vừa chừa chỗ xem món ăn. */
+  .brand-mark,
+  .brand-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+  .brand-mark {
+    font-size: 13px;
+  }
+
+  .brand-name {
+    font-size: 16px;
+  }
+
+  .header-actions {
+    order: 2;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  /* Ô tìm kiếm chiếm trọn một hàng riêng */
+  .search-box {
+    order: -1;
+    flex: 1 0 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Menu 4 mục nằm trong một hàng cuộn ngang,
+     tránh bị bóp chữ hoặc tràn ra ngoài màn hình hẹp */
+  .main-nav {
+    order: 3;
+    width: 100%;
+    gap: 22px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+
+  .main-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .main-nav a {
+    white-space: nowrap;
+    padding-block: 4px;
+  }
+
+  /* Giữ nút tài khoản trong header. Trước đây nó bị ẩn ở ≤640px,
+     làm người dùng điện thoại không đăng xuất được và
+     không vào được trang quản trị. */
+  .header-actions .btn-login {
+    display: inline-flex;
+  }
+
+  .header-actions .btn {
+    padding-inline: 13px;
+    font-size: 14px;
+  }
+
+  .header-actions .btn-admin {
+    display: none;
+  }
+
+  .brand-name {
+    font-size: 18px;
+  }
+
+  .auth-modal {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+  }
+
+  .auth-image {
+    display: none;
+  }
+}
+
+/* ----- Điện thoại (≤600px) ----- */
+@media (max-width: 600px) {
+  .container {
+    padding-inline: 16px;
+  }
+
+  h1 {
+    font-size: 34px;
+  }
+
+  h2 {
+    font-size: 25px;
+  }
+
+  h3 {
+    font-size: 18px;
+  }
+
+  .hero {
+    padding: 40px 0 36px;
+  }
+
+  .hero-sub {
+    font-size: 16px;
+    margin: 16px 0 22px;
+  }
+
+  .hero-art {
+    min-height: 260px;
+  }
+
+  .hero-actions .btn {
+    flex: 1 1 100%;
+  }
+
+  /* Bỏ hàng menu khỏi header điện thoại.
+     Cả 4 liên kết và mục "Trang quản trị" đã có trong footer,
+     nên không mất gì mà header bớt cao ~46px. */
+  .main-nav {
+    display: none;
+  }
+
+  /* Một cột cho dễ đọc và dễ bấm */
+  .features-grid,
+  .dish-grid,
+  .footer-grid,
+  .about-art {
+    grid-template-columns: 1fr;
+  }
+
+  .dish-art img {
+    height: 200px;
+  }
+
+  .about-photo {
+    min-height: 230px;
+  }
+
+  .promo-inner {
+    flex-direction: column;
+    text-align: center;
+    padding: 32px 22px;
+  }
+
+  .promo-art {
+    width: 110px;
+    height: 110px;
+  }
+
+  .promo-art span {
+    font-size: 34px;
+  }
+
+  .promo-content h2 {
+    font-size: 25px;
+  }
+
+  .category-filter {
+    gap: 8px;
+    margin: 20px 0 26px;
+    /* Cuộn ngang thay vì xuống hàng quá nhiều.
+       min-width: 0 là bắt buộc: đây là flex item, mặc định
+       min-width:auto khiến nó giữ nguyên bề rộng nội dung
+       và làm tràn ngang cả trang. */
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+
+  .category-filter::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-btn {
+    flex: 0 0 auto;
+    padding: 9px 15px;
+    font-size: 14px;
+  }
+
+  /* Giỏ hàng: xuống 2 hàng cho từng món thay vì 5 cột bị bóp */
+  .cart-line {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'art info remove'
+      'art qty  price';
+    gap: 6px 10px;
+    padding: 16px 0;
+  }
+
+  .cart-line-art {
+    grid-area: art;
+  }
+
+  .cart-line-main {
+    grid-area: info;
+  }
+
+  .cart-line .qty {
+    grid-area: qty;
+    justify-self: start;
+  }
+
+  .cart-line-total {
+    grid-area: price;
+    align-self: center;
+    text-align: right;
+  }
+
+  .cart-remove {
+    grid-area: remove;
+  }
+
+  .cart-head,
+  .sheet-head {
+    padding: 14px 16px;
+  }
+
+  .cart-body,
+  .sheet-body {
+    padding-inline: 16px;
+  }
+
+  .cart-drawer {
+    width: 100%;
+  }
+
+  .sheet-foot {
+    padding: 16px;
+  }
+
+  .sheet-foot .btn {
+    flex: 1 1 100%;
+  }
+
+  .toast {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    transform: none;
+    text-align: center;
+  }
+}
+
+/* ----- Điện thoại nhỏ (≤420px) ----- */
+@media (max-width: 420px) {
+  .container {
+    padding-inline: 14px;
+  }
+
+  h1 {
+    font-size: 29px;
+  }
+
+  h2 {
+    font-size: 22px;
+  }
+
+  .brand-name {
+    font-size: 16px;
+  }
+
+  .brand-mark,
+  .brand-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  .brand-mark {
+    font-size: 14px;
+  }
+
+  .header-actions .btn {
+    padding-inline: 11px;
+    font-size: 13.5px;
+  }
+
+  .cart-line {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'art  info'
+      'qty  price'
+      'remove remove';
+  }
+
+  .cart-remove {
+    justify-self: end;
+  }
+}
+
+/* ----- Vùng chạm trên thiết bị cảm ứng: mục tiêu tối thiểu 44px ----- */
+@media (pointer: coarse) {
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .qty-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 19px;
+  }
+
+  .qty span {
+    min-width: 32px;
+  }
+
+  .search-clear {
+    width: 32px;
+    height: 32px;
+  }
+
+  .cart-remove {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Các phần tử sau đây thấp hơn 40px nên khó bấm trên điện thoại */
+  .btn,
+  .category-btn,
+  .brand,
+  .main-nav a,
+  .footer-grid a,
+  .search-box {
+    min-height: 44px;
+  }
+
+  .main-nav a,
+  .footer-grid a {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* ===== Checkout / xác nhận đơn kiểu app food ===== */
+.checkout-choice { border:1px solid var(--border); border-radius:14px; padding:12px 14px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#fff; margin-bottom:12px; }
+.field-label { width:100%; font-weight:800; color:var(--ink); font-size:14px; }
+.choice { display:inline-flex; align-items:center; gap:7px; border:1px solid var(--border); border-radius:10px; padding:9px 11px; cursor:pointer; font-size:13px; background:#fffaf6; }
+.choice:has(input:checked) { border-color:var(--brand); background:var(--brand-soft); color:var(--brand-dark); font-weight:700; }
+.choice input { accent-color:var(--brand); }
+.order-confirm-sheet { text-align:center; }
+.order-confirm-sheet .eyebrow { margin-bottom:4px; }
+.confirm-code { font-size:16px; margin:7px 0 12px; }
+.confirm-status { display:inline-flex; align-items:center; gap:8px; padding:9px 12px; border-radius:999px; background:#eaf7ef; color:#27784c; font-weight:700; font-size:13px; }
+.success-dot { width:8px; height:8px; border-radius:50%; background:#2f9e63; display:inline-block; }
+.confirm-summary { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:16px 0; text-align:left; }
+.confirm-summary > div { padding:11px; border:1px solid var(--border); border-radius:12px; background:#fffaf6; }
+.confirm-summary span, .confirm-summary b { display:block; }
+.confirm-summary span { font-size:12px; color:var(--text); }
+.confirm-summary b { margin-top:3px; color:var(--ink); }
+.confirm-items { text-align:left; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-bottom:12px; }
+.confirm-items > div { display:flex; justify-content:space-between; gap:10px; padding:9px 0; font-size:14px; }
+.my-order-meta { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+.my-order-meta span { padding:5px 9px; border-radius:999px; background:var(--brand-soft); color:var(--ink); font-size:12px; }
+
+/* ===== Checkout mới: địa chỉ, topping, thanh toán ===== */
+.address-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.address-grid select { width:100%; min-height:48px; border:1px solid var(--line,#eadfd7); border-radius:12px; background:#fff; padding:0 14px; font:inherit; color:inherit; }
+.address-grid select:disabled { background:#f7f3ef; color:#999; cursor:not-allowed; }
+.address-helper { margin:8px 0 2px; font-size:12px; color:#8b817a; }
+.saved-addresses { display:grid; gap:8px; margin-bottom:12px; }
+.saved-address { text-align:left; border:1px solid var(--border); border-radius:13px; padding:10px 12px; background:#fff; display:grid; gap:3px; cursor:pointer; }
+.saved-address.is-active { border-color:var(--brand); box-shadow:0 0 0 2px rgba(232,84,45,.12); background:var(--brand-soft); }
+.saved-address span,.saved-address small { color:var(--text); font-size:12px; }
+.save-address-check { display:flex; align-items:center; gap:8px; margin:4px 0 12px; font-size:13px; }
+.save-address-check input { accent-color:var(--brand); }
+.topping-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+.topping-option { display:flex; align-items:center; gap:9px; padding:10px; border:1px solid var(--border); border-radius:13px; background:#fff; cursor:pointer; }
+.topping-option:has(input:checked) { border-color:var(--brand); background:var(--brand-soft); }
+.topping-option input { accent-color:var(--brand); }
+.topping-emoji { font-size:24px; }
+.topping-option b,.topping-option small { display:block; }
+.topping-option small { color:var(--brand); margin-top:2px; }
+.payment-info { display:flex; gap:14px; align-items:center; padding:12px; border:1px dashed var(--brand); border-radius:14px; background:#fffaf6; margin:-3px 0 12px; }
+.payment-copy { flex:1; display:grid; gap:4px; font-size:13px; }
+.payment-copy span { color:var(--text); }
+.payment-qr { width:118px; height:118px; object-fit:cover; border-radius:10px; border:1px solid var(--border); }
+.payment-info.is-cod { display:grid; gap:3px; }
+.payment-info.is-cod span { color:var(--text); font-size:12px; }
+.delivery-proof { margin:10px 0; padding:10px; border:1px solid var(--border); border-radius:13px; background:#fffaf6; display:grid; gap:6px; }
+.delivery-proof img { width:100%; max-height:230px; object-fit:cover; border-radius:10px; }
+.received-note { color:#28764c; background:#eef9f2; border-radius:10px; padding:8px 10px; font-size:13px; font-weight:700; }
+@media (max-width:700px) { .address-grid { grid-template-columns:1fr; } .topping-grid { grid-template-columns:1fr; } .payment-info { align-items:flex-start; } .payment-qr { width:95px; height:95px; } }
+
+/* =========================
+   FOOD APP HERO BANNER
+   Inspired by modern food-delivery layouts, with CBM branding.
+========================= */
+.food-banner {
+  padding: 28px 0 36px;
+  background: #f7f8f4;
+}
+
+.food-banner-inner {
+  position: relative;
+  min-height: 390px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 54px 64px;
+  border-radius: 24px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1.02fr .98fr;
+  align-items: center;
+  background: linear-gradient(105deg, #0f9f55 0%, #16b864 47%, #dff6e7 47%, #f7fbf8 100%);
+  box-shadow: 0 16px 40px rgba(15, 80, 45, .12);
+}
+
+.food-banner-inner::before,
+.food-banner-inner::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  pointer-events: none;
+}
+.food-banner-inner::before { width: 310px; height: 310px; left: 36%; top: -210px; }
+.food-banner-inner::after { width: 210px; height: 210px; left: 45%; bottom: -160px; }
+
+.food-banner-copy { position: relative; z-index: 3; max-width: 570px; color: #fff; }
+.food-banner-kicker {
+  display: inline-flex;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.28);
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.food-banner-copy h1 {
+  margin: 0;
+  font-size: clamp(38px, 4.3vw, 60px);
+  line-height: 1.02;
+  letter-spacing: -2px;
+  color: #fff;
+}
+.food-banner-copy h1 strong { color: #dfffe9; }
+.food-banner-copy p {
+  max-width: 500px;
+  margin: 18px 0 22px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: rgba(255,255,255,.9);
+}
+.food-banner-actions { display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+.btn-banner-primary {
+  background:#fff;
+  color:#079447;
+  border-color:#fff;
+  padding:13px 24px;
+  box-shadow:0 8px 18px rgba(0,0,0,.12);
+}
+.btn-banner-primary:hover { background:#effff5; color:#06783a; }
+.banner-link { color:#fff; font-weight:800; text-decoration:none; }
+.banner-link:hover { text-decoration:underline; }
+.food-banner-trust { display:flex; flex-wrap:wrap; gap:16px; margin-top:24px; font-size:12px; font-weight:700; color:rgba(255,255,255,.88); }
+
+.food-banner-visual { position:relative; min-height:330px; z-index:2; }
+.banner-food-circle { position:absolute; border-radius:50%; background:rgba(18,173,91,.13); }
+.banner-food-circle-a { width:360px; height:360px; right:-30px; top:-20px; }
+.banner-food-circle-b { width:190px; height:190px; right:210px; bottom:-55px; background:rgba(18,173,91,.1); }
+.banner-food-card { position:absolute; overflow:hidden; box-shadow:0 18px 36px rgba(25,74,45,.22); border:7px solid rgba(255,255,255,.95); background:#fff; }
+.banner-food-card img { width:100%; height:100%; object-fit:cover; display:block; }
+.banner-food-card-main { width:390px; height:285px; right:5px; top:15px; border-radius:34px 34px 34px 90px; transform:rotate(2deg); }
+.banner-food-card-small { width:165px; height:135px; left:12px; bottom:8px; border-radius:24px; transform:rotate(-5deg); }
+.banner-rating, .banner-delivery {
+  position:absolute; background:#fff; color:#173426; border-radius:16px; padding:10px 13px; box-shadow:0 10px 25px rgba(25,74,45,.16); font-weight:900;
+}
+.banner-rating { right:25px; bottom:18px; color:#ef9b18; }
+.banner-rating span, .banner-delivery span { display:block; color:#68756e; font-size:10px; font-weight:700; margin-top:2px; }
+.banner-delivery { left:58px; top:8px; color:#0b9d4e; font-size:15px; }
+.banner-delivery strong { margin-left:4px; }
+
+@media (max-width: 960px) {
+  .food-banner-inner { grid-template-columns:1fr; padding:42px 38px 20px; background:linear-gradient(150deg,#0f9f55 0%,#16b864 56%,#dff6e7 56%,#f7fbf8 100%); }
+  .food-banner-visual { min-height:300px; margin-top:10px; }
+  .banner-food-card-main { right:20px; }
+}
+@media (max-width: 640px) {
+  .food-banner { padding:12px 0 24px; }
+  .food-banner-inner { border-radius:18px; padding:32px 24px 16px; min-height:0; }
+  .food-banner-copy h1 { font-size:40px; letter-spacing:-1.4px; }
+  .food-banner-copy p { font-size:15px; }
+  .food-banner-trust { gap:8px 12px; }
+  .food-banner-visual { min-height:245px; }
+  .banner-food-card-main { width:280px; height:205px; right:0; top:20px; }
+  .banner-food-card-small { width:125px; height:100px; left:0; bottom:0; }
+  .banner-food-circle-a { width:260px; height:260px; right:-50px; top:0; }
+  .banner-rating { right:0; bottom:4px; }
+  .banner-delivery { left:0; top:8px; }
+}
+
+/* Hiển thị đơn vị bán + đánh giá 5 sao */
+.dish-vendor { margin:8px 0 2px; color:#6f5a4e; font-size:12px; font-weight:800; }
+.banner-rating { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.banner-rating strong { font-size:14px; }
+.banner-rating span { font-size:11px; opacity:.88; }
+
+.address-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 700px) { .address-grid-2 { grid-template-columns: 1fr; } }

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <title>Shipper - CBM FOOD</title>
+  </head>
+  <body class="shipper-body">
+    <div id="shipper-gate" class="shipper-gate">
+      <div class="shipper-auth-card">
+        <div class="shipper-auth-tabs" role="tablist">
+          <button type="button" class="is-active" data-auth-tab="login">Đăng nhập</button>
+          <button type="button" data-auth-tab="register">Đăng ký Shipper</button>
+        </div>
+        <form id="shipper-login" class="shipper-login" novalidate>
+          <img src="/logo.png" alt="CBM FOOD" class="shipper-logo" />
+          <p class="shipper-eyebrow">CBM FOOD DELIVERY</p>
+          <h1>Đăng nhập Shipper</h1>
+          <p>Đăng nhập để nhận đơn và giao đơn cho khách hàng.</p>
+          <label><span>Email</span><input name="email" type="email" autocomplete="username" value="shipper@cbmfood.vn" required /></label>
+          <label><span>Mật khẩu</span><input name="password" type="password" autocomplete="current-password" value="shipper123" required /></label>
+          <p id="shipper-login-error" class="shipper-error" hidden></p>
+          <button class="shipper-primary" type="submit">Đăng nhập</button>
+          <small>Tài khoản demo: shipper@cbmfood.vn / shipper123</small>
+          <a href="/">← Về trang khách hàng</a>
+        </form>
+        <form id="shipper-register" class="shipper-login" novalidate hidden>
+          <img src="/logo.png" alt="CBM FOOD" class="shipper-logo" />
+          <p class="shipper-eyebrow">CBM FOOD DELIVERY</p>
+          <h1>Đăng ký Shipper</h1>
+          <p>Tạo tài khoản để nhận và giao đơn hàng.</p>
+          <label><span>Họ và tên *</span><input name="name" type="text" autocomplete="name" placeholder="Nguyễn Văn A" required /></label>
+          <label><span>Email *</span><input name="email" type="email" autocomplete="email" placeholder="email@example.com" required /></label>
+          <label><span>Số điện thoại *</span><input name="phone" type="tel" autocomplete="tel" placeholder="09xxxxxxxx" required /></label>
+          <label><span>Mật khẩu *</span><input name="password" type="password" autocomplete="new-password" minlength="6" placeholder="Ít nhất 6 ký tự" required /></label>
+          <label><span>Nhập lại mật khẩu *</span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="6" required /></label>
+          <p id="shipper-register-error" class="shipper-error" hidden></p>
+          <p id="shipper-register-success" class="shipper-success" hidden></p>
+          <button class="shipper-primary" type="submit">Tạo tài khoản Shipper</button>
+          <small>Đăng ký xong bạn có thể đăng nhập ngay bằng tài khoản vừa tạo.</small>
+        </form>
+      </div>
+    </div>
+
+    <div id="shipper-app" class="shipper-app" hidden>
+      <header class="shipper-topbar">
+        <div class="shipper-brand"><img src="/logo.png" alt="CBM FOOD" /><div><strong>CBM FOOD</strong><small>Ứng dụng Shipper</small></div></div>
+        <div class="shipper-user"><span id="shipper-avatar">S</span><div><strong id="shipper-name">Shipper</strong><small id="shipper-phone"></small></div><button id="shipper-logout">Đăng xuất</button></div>
+      </header>
+
+      <main class="shipper-content">
+        <section class="shipper-hero">
+          <div class="shipper-welcome">
+            <span class="live-dot"></span> <b>Đang online</b>
+            <h1>Xin chào, <span id="shipper-welcome-name">Shipper</span> 👋</h1>
+            <p>Nhận đơn gần bạn, giao nhanh và cập nhật trạng thái theo thời gian thực.</p>
+          </div>
+          <button class="ship-online-btn" id="ship-online-toggle">🟢 Đang nhận đơn</button>
+        </section>
+
+        <section class="shipper-dashboard">
+          <div class="ship-map-wrap">
+            <div class="map-topbar"><b>📍 Bản đồ giao hàng</b><button id="ship-my-location">⌖ Vị trí của tôi</button></div>
+            <div id="shipper-map"></div>
+            <div class="map-legend"><span><i class="dot store"></i> CBM FOOD</span><span><i class="dot rider"></i> Vị trí của bạn</span><span><i class="dot order"></i> Điểm giao</span></div>
+          </div>
+          <aside class="ship-quick-panel">
+            <div class="quick-title"><b>Hôm nay</b><span>Ca giao hàng</span></div>
+            <div class="quick-stats">
+              <article><b id="available-count">0</b><span>Đơn chờ nhận</span></article>
+              <article><b id="active-count">0</b><span>Đang giao</span></article>
+              <article><b id="done-count">0</b><span>Đã giao</span></article>
+              <article><b id="earn-count">0đ</b><span>Thu nhập</span></article>
+            </div>
+            <div class="quick-actions">
+              <button data-quick-tab="available">📦 Nhận đơn mới</button>
+              <button data-quick-tab="active">🛵 Đơn đang giao</button>
+            </div>
+          </aside>
+        </section>
+
+        <section class="shipper-tabs">
+          <button class="is-active" data-tab="available">Đơn có thể nhận</button>
+          <button data-tab="active">Đơn của tôi</button>
+        </section>
+
+        <section id="available-panel" class="shipper-panel"></section>
+        <section id="active-panel" class="shipper-panel" hidden></section>
+        <section class="shipper-bottom-tip"><b>💡 Mẹo giao hàng</b><span>Kiểm tra món, gọi khách trước khi đến và chụp ảnh xác nhận sau khi giao.</span></section>
+      </main>
+    </div>
+
+    <div id="shipper-modal"></div>
+    <div id="shipper-toast" class="shipper-toast" aria-live="polite"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+      // Fallback for cached/failed module loads: demo credentials can still open the shipper UI.
+      document.getElementById('shipper-login')?.addEventListener('submit', function (event) {
+        if (window.__cbmShipperModuleReady) return;
+        event.preventDefault();
+        const email = this.elements.email?.value?.trim().toLowerCase();
+        const password = this.elements.password?.value || '';
+        const error = document.getElementById('shipper-login-error');
+        if (email !== 'shipper@cbmfood.vn' || password !== 'shipper123') {
+          error.textContent = 'Email hoặc mật khẩu không đúng.';
+          error.hidden = false;
+          return;
+        }
+        document.getElementById('shipper-gate').hidden = true;
+        document.getElementById('shipper-gate').style.display = 'none';
+        document.getElementById('shipper-app').hidden = false;
+        document.getElementById('shipper-app').style.display = 'block';
+        document.getElementById('shipper-name').textContent = 'Shipper CBM FOOD';
+        document.getElementById('shipper-welcome-name').textContent = 'Shipper CBM FOOD';
+      });
+    </script>
+    <script type="module" src="/src/shipper.js?v=9"></script>
+  </body>
+</html>

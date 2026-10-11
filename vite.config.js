@@ -1,3 +1,4 @@
+
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 
@@ -9,6 +10,7 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         admin: resolve(import.meta.dirname, 'admin.html'),
+        shipper: resolve(import.meta.dirname, 'shipper.html'),
       },
     },
   },

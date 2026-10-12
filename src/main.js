@@ -475,7 +475,7 @@ const cartRows = ({ editable = true } = {}) =>
  * Mã đang áp thì hiện nút bỏ, nếu không thì hiện ô nhập; lỗi (hết hạn, chưa
  * đủ tạm tính...) hiện ngay dưới ô thay vì toast để khách còn nhìn thấy.
  */
-const voucherBox = () => {
+const voucherBox = ({ insideCheckout = false } = {}) => {
   const applied = cart.voucher()
   if (applied) {
     return `
@@ -484,12 +484,17 @@ const voucherBox = () => {
         <button type="button" class="btn btn-ghost btn-sm" data-action="voucher-remove">Bỏ mã</button>
       </div>`
   }
+  /* Không đặt form voucher bên trong form checkout: HTML không hỗ trợ form lồng nhau,
+     việc này có thể khiến nút Đặt món không submit đúng. */
+  const wrapper = insideCheckout ? 'div' : 'form'
+  const submitType = insideCheckout ? 'button' : 'submit'
+  const action = insideCheckout ? ' data-action="voucher-apply"' : ''
   return `
-    <form class="voucher-box" id="voucherForm" novalidate>
+    <${wrapper} class="voucher-box" ${insideCheckout ? '' : 'id="voucherForm" novalidate'}>
       <input name="code" placeholder="Mã giảm giá" autocomplete="off"
         aria-label="Mã giảm giá" value="${escape(cartErrorCode ?? '')}" />
-      <button type="submit" class="btn btn-outline btn-sm">Áp dụng</button>
-    </form>
+      <button type="${submitType}" class="btn btn-outline btn-sm"${action}>Áp dụng</button>
+    </${wrapper}>
     ${cartErrorText ? `<p class="voucher-error" role="alert">${escape(cartErrorText)}</p>` : ''}`
 }
 
@@ -749,7 +754,7 @@ const openCheckout = () => {
             <label class="field"><span>Ghi chú</span><textarea name="note" placeholder="Ví dụ: gọi trước khi giao..."></textarea></label>
             <div class="sheet-lines">${cartRows({ editable: false })}</div>
             <p class="form-error" id="checkoutError" role="alert" hidden></p>
-            ${voucherBox()}
+            ${voucherBox({ insideCheckout: true })}
             ${moneySummary()}
           </div>
           <div class="sheet-foot">
@@ -1323,6 +1328,23 @@ document.addEventListener('click', async (event) => {
       cartErrorCode = ''
       refreshCart()
       return openCart()
+    }
+    if (action === 'voucher-apply') {
+      event.preventDefault()
+      const wrapper = actionBtn.closest('.voucher-box')
+      const code = String(wrapper?.querySelector('[name="code"]')?.value ?? '')
+      const result = cart.applyVoucher(code, {
+        userId: auth.getUser()?.id ?? null,
+        phone: String(ui.querySelector('#checkoutForm [name="phone"]')?.value ?? '') || undefined,
+      })
+      if (result.error) {
+        cartErrorText = result.error
+        cartErrorCode = code
+        return openCheckout()
+      }
+      cartErrorText = ''
+      cartErrorCode = ''
+      return openCheckout()
     }
     if (action === 'voucher-remove') {
       cart.removeVoucher()

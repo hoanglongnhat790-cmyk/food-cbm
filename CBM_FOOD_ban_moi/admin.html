@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="description" content="Quản trị CBM FOOD - món ăn, đơn hàng và doanh thu." />
+    <title>Quản trị CBM FOOD</title>
+  </head>
+  <body class="admin-body">
+    <div id="auth-gate" class="gate" hidden>
+      <form id="gate-form" class="gate-box" novalidate>
+        <img src="/logo.png" alt="CBM FOOD" class="gate-logo" />
+        <h1>Khu vực quản trị</h1>
+        <p class="gate-text">Đăng nhập bằng tài khoản quản trị để tiếp tục.</p>
+        <label class="field">
+          <span>Email</span>
+          <input type="email" name="email" autocomplete="email" value="admin@cbmfood.vn" required />
+        </label>
+        <label class="field">
+          <span>Mật khẩu</span>
+          <input type="password" name="password" autocomplete="current-password" value="admin123" required />
+        </label>
+        <p id="gate-error" class="form-error" role="alert" hidden></p>
+        <button type="submit" class="btn btn-primary btn-block">Đăng nhập</button>
+        <small class="gate-demo">Tài khoản admin: <b>admin@cbmfood.vn</b> / <b>admin123</b></small>
+        <a class="gate-back" href="/">← Về trang khách hàng</a>
+      </form>
+    </div>
+
+    <div id="admin-shell" class="shell" hidden>
+      <aside class="side">
+        <a class="side-brand" href="/">
+          <img src="/logo.png" alt="CBM FOOD" class="side-logo" />
+          <span>
+            <strong>CBM FOOD</strong>
+            <small>Trang quản trị</small>
+          </span>
+        </a>
+        <nav class="side-nav">
+          <a href="#/dashboard" data-nav="dashboard">Tổng quan</a>
+          <a href="#/dishes" data-nav="dishes">Món ăn</a>
+          <a href="#/orders" data-nav="orders">Đơn hàng</a>
+          <a href="#/ship" data-nav="ship">🚴 Điều phối ship</a>
+          <a href="/shipper.html">📱 Đăng nhập Shipper</a>
+          <a href="#/vouchers" data-nav="vouchers">Voucher</a>
+        </nav>
+        <button type="button" class="side-reset" data-action="reset">Khôi phục dữ liệu mẫu</button>
+        <a class="side-back" href="/">← Về cửa hàng</a>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <div>
+            <h1 id="page-title">Tổng quan</h1>
+            <p id="page-sub" class="muted"></p>
+          </div>
+          <div class="topbar-user">
+            <span class="avatar" id="admin-avatar">A</span>
+            <span class="user-text">
+              <strong id="admin-name">Đang tải...</strong>
+              <small id="admin-email"></small>
+            </span>
+            <button type="button" class="btn btn-ghost" id="admin-logout">Đăng xuất</button>
+          </div>
+        </header>
+
+        <main class="content">
+          <section class="view" data-view="dashboard" hidden>
+            <div class="stat-grid" id="stat-grid"></div>
+            <div class="panel-grid">
+              <section class="panel">
+                <header class="panel-head"><h2>Đơn hàng mới nhất</h2></header>
+                <div class="panel-body" id="recent-orders"></div>
+              </section>
+              <section class="panel">
+                <header class="panel-head"><h2>Trạng thái đơn hàng</h2></header>
+                <div class="panel-body" id="order-status-stats"></div>
+              </section>
+              <section class="panel">
+                <header class="panel-head"><h2>Món bán chạy</h2></header>
+                <div class="panel-body" id="top-dishes"></div>
+              </section>
+              <section class="panel">
+                <header class="panel-head"><h2>Kho nguyên liệu & món</h2></header>
+                <div class="panel-body" id="inventory-summary"></div>
+              </section>
+              <section class="panel panel-wide">
+                <header class="panel-head"><h2>📈 Doanh thu theo ngày / tháng / năm</h2><small class="muted">Chỉ tính các đơn đã hoàn thành</small></header>
+                <div class="panel-body" id="revenue-report" data-period="day"></div>
+              </section>
+              <section class="panel panel-wide">
+                <header class="panel-head"><h2>🏪 Doanh thu theo từng đơn vị</h2></header>
+                <div class="panel-body vendor-report" id="vendor-report"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="view" data-view="dishes" hidden>
+            <header class="view-head">
+              <div>
+                <h2>Danh sách món ăn</h2>
+                <p class="muted" id="dish-summary"></p>
+              </div>
+              <button type="button" class="btn btn-primary" data-action="dish-new">+ Thêm món ăn</button>
+            </header>
+            <div class="toolbar">
+              <input type="search" id="dish-search" placeholder="Tìm theo tên hoặc mô tả..." autocomplete="off" />
+              <select id="dish-category" aria-label="Danh mục">
+                <option value="all">Tất cả danh mục</option>
+              </select>
+              <select id="dish-status" aria-label="Trạng thái">
+                <option value="all">Tất cả trạng thái</option>
+                <option value="available">Đang bán</option>
+                <option value="runningOut">Sắp hết</option>
+                <option value="unavailable">Tạm ngưng</option>
+              </select>
+            </div>
+            <div class="card-grid" id="dish-list"></div>
+          </section>
+
+          <section class="view" data-view="orders" hidden>
+            <header class="view-head">
+              <div>
+                <h2>Quản lý đơn hàng</h2>
+                <p class="muted" id="order-summary"></p>
+              </div>
+            </header>
+            <div class="toolbar">
+              <input type="search" id="order-search" placeholder="Tìm theo mã đơn, tên hoặc số điện thoại..." autocomplete="off" />
+            </div>
+            <div class="chip-row" id="order-chips"></div>
+            <div class="order-list" id="order-list"></div>
+          </section>
+
+
+
+          <section class="view" data-view="ship" hidden>
+            <header class="view-head">
+              <div>
+                <h2>Điều phối giao hàng</h2>
+                <p class="muted" id="ship-summary"></p>
+              </div>
+            </header>
+            <div class="panel shipper-team-panel">
+              <header class="panel-head"><h3>🚴 Đội Shipper</h3><span id="shipper-summary" class="muted"></span></header>
+              <div class="panel-body" id="shipper-list"></div>
+            </div>
+            <div class="ship-board" id="ship-board"></div>
+          </section>
+          <section class="view" data-view="vouchers" hidden>
+            <header class="view-head">
+              <div>
+                <h2>Mã giảm giá</h2>
+                <p class="muted" id="voucher-summary"></p>
+              </div>
+              <button type="button" class="btn btn-primary" data-action="voucher-new">+ Thêm voucher</button>
+            </header>
+            <div class="toolbar">
+              <input type="search" id="voucher-search" placeholder="Tìm theo mã..." autocomplete="off" />
+            </div>
+            <div class="voucher-list" id="voucher-list"></div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div id="modal-root"></div>
+    <div id="toast-root" class="toast-stack" aria-live="polite"></div>
+
+    <script type="module" src="/src/admin.js"></script>
+  </body>
+</html>

@@ -23,46 +23,125 @@ const shell = () => `
 <header class="site-header">
   <div class="container header-inner">
 
-    <a href="#home" class="brand">
+    <!-- 1. Logo thuong hieu -->
+    <a href="#home" class="brand" aria-label="CBM FOOD - Trang chủ">
       <img src="/logo.png" alt="CBM FOOD" class="brand-logo" />
       <span class="brand-name">CBM FOOD</span>
     </a>
 
+    <!-- 2. Khung chon vi tri / thanh pho (ShopeeFood style) -->
+    <div class="location-picker" id="locationPicker">
+      <button
+        type="button"
+        class="location-btn"
+        id="locationBtn"
+        aria-expanded="false"
+        aria-haspopup="listbox"
+        title="Chọn khu vực giao hàng"
+      >
+        <svg class="location-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
+        </svg>
+        <span class="location-name" id="currentLocation">Hà Nội</span>
+        <svg class="location-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      <div class="location-dropdown" id="locationDropdown" role="listbox" aria-label="Danh sách thành phố" hidden>
+        <div class="location-dropdown-header">Khu vực giao hàng</div>
+        <div class="location-list">
+          <button type="button" class="location-option active" data-city="Hà Nội" role="option" aria-selected="true">
+            <span class="city-name">Hà Nội</span>
+            <svg class="check-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </button>
+          <button type="button" class="location-option" data-city="TP. Hồ Chí Minh" role="option" aria-selected="false">
+            <span class="city-name">TP. Hồ Chí Minh</span>
+            <svg class="check-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </button>
+          <button type="button" class="location-option" data-city="Đà Nẵng" role="option" aria-selected="false">
+            <span class="city-name">Đà Nẵng</span>
+            <svg class="check-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </button>
+          <button type="button" class="location-option" data-city="Hải Phòng" role="option" aria-selected="false">
+            <span class="city-name">Hải Phòng</span>
+            <svg class="check-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </button>
+          <button type="button" class="location-option" data-city="Cần Thơ" role="option" aria-selected="false">
+            <span class="city-name">Cần Thơ</span>
+            <svg class="check-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Danh muc dieu huong chinh voi hieu ung active cam + gach chan cam -->
     <nav class="main-nav" aria-label="Menu chính">
-      <a href="#home" class="active">Trang chủ</a>
-      <a href="#menu">Thực đơn</a>
-      <a href="#my-orders">Đơn của tôi</a>
-      <a href="#about">Giới thiệu</a>
-      <a href="#contact">Liên hệ</a>
+      <a href="#home" class="active"><span>Trang chủ</span></a>
+      <a href="#menu"><span>Thực đơn</span></a>
+      <a href="#my-orders"><span>Đơn của tôi</span></a>
+      <a href="#about"><span>Giới thiệu</span></a>
+      <a href="#contact"><span>Liên hệ</span></a>
     </nav>
 
+    <!-- 4. Thanh tim kiem & Tien ich + 5. Nut Gio hang (CTA) -->
     <div class="header-actions">
+      <!-- O tim kiem gon gang -->
       <div class="search-box">
-        <span class="search-icon" aria-hidden="true">🔍</span>
+        <svg class="search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
         <input
           type="search"
           id="dishSearch"
-          placeholder="Tìm món ăn..."
+          placeholder="Tìm món ngon, đồ uống..."
           aria-label="Tìm món ăn"
           autocomplete="off"
         />
         <button type="button" class="search-clear" id="searchClear" aria-label="Xoá từ khoá" hidden>✕</button>
       </div>
 
-      <button class="btn btn-outline btn-login" data-auth="login">
-        Đăng nhập
+      <!-- Nut pill: Dang nhap -->
+      <button class="btn btn-pill btn-login" data-auth="login" title="Tài khoản cá nhân">
+        <svg class="pill-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span class="btn-label">Đăng nhập</span>
       </button>
 
-      <a href="/admin.html" class="btn btn-outline btn-admin">
-        Quản trị
+      <!-- Nut pill: Quan tri -->
+      <a href="/admin.html" class="btn btn-pill btn-admin" title="Trang quản trị">
+        <svg class="pill-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span>Quản trị</span>
       </a>
 
-      <a href="/shipper.html" class="btn btn-outline btn-admin">
-        Shipper
+      <!-- Nut pill: Shipper -->
+      <a href="/shipper.html" class="btn btn-pill btn-shipper" title="Cổng dành cho Shipper">
+        <svg class="pill-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="18.5" cy="17.5" r="3.5"></circle>
+          <circle cx="5.5" cy="17.5" r="3.5"></circle>
+          <circle cx="15" cy="5" r="1"></circle>
+          <path d="M12 17.5V14l-3-3 4-3 2 3h2"></path>
+        </svg>
+        <span>Shipper</span>
       </a>
 
-      <button class="btn btn-primary btn-cart" data-action="open-cart">
-        Giỏ hàng
+      <!-- 5. Nut chinh (CTA): Gio hang noi bat mau cam -->
+      <button class="btn btn-primary btn-cart btn-cart-highlight" data-action="open-cart" aria-label="Xem giỏ hàng">
+        <svg class="cart-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <path d="M16 10a4 4 0 0 1-8 0"></path>
+        </svg>
+        <span class="cart-text">Giỏ hàng</span>
         <span class="cart-badge" id="cartBadge" hidden>0</span>
       </button>
     </div>
@@ -869,7 +948,13 @@ const showAuthError = (message) => {
 const syncLoginButton = () => {
   const user = auth.getUser()
   document.querySelectorAll('.btn-login').forEach((btn) => {
-    btn.textContent = user ? user.name.split(' ')[0] : 'Đăng nhập'
+    const label = btn.querySelector('.btn-label')
+    const name = user ? user.name.split(' ')[0] : 'Đăng nhập'
+    if (label) {
+      label.textContent = name
+    } else {
+      btn.textContent = name
+    }
   })
   forceRefreshMyOrders()
 }
@@ -1600,6 +1685,110 @@ document.addEventListener('keydown', (event) => {
 })
 
 /* =========================
+   NAVBAR: VI TRI & DIEU HUONG
+========================= */
+
+const initNavbarInteractive = () => {
+  // 1. Chon khu vuc / thanh pho (ShopeeFood style)
+  const picker = $('#locationPicker')
+  const btn = $('#locationBtn')
+  const dropdown = $('#locationDropdown')
+  const currentLoc = $('#currentLocation')
+
+  if (picker && btn && dropdown) {
+    const savedCity = localStorage.getItem('cbmfood_city') || 'Hà Nội'
+    if (currentLoc) currentLoc.textContent = savedCity
+
+    dropdown.querySelectorAll('.location-option').forEach((opt) => {
+      const isMatch = opt.dataset.city === savedCity
+      opt.classList.toggle('active', isMatch)
+      opt.setAttribute('aria-selected', String(isMatch))
+    })
+
+    const toggleDropdown = (show) => {
+      const isVisible = show !== undefined ? show : dropdown.hidden
+      dropdown.hidden = !isVisible
+      btn.setAttribute('aria-expanded', String(isVisible))
+      picker.classList.toggle('is-open', isVisible)
+    }
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      toggleDropdown()
+    })
+
+    dropdown.addEventListener('click', (e) => {
+      const opt = e.target.closest('.location-option')
+      if (!opt) return
+      const city = opt.dataset.city
+      if (currentLoc) currentLoc.textContent = city
+      localStorage.setItem('cbmfood_city', city)
+      dropdown.querySelectorAll('.location-option').forEach((o) => {
+        const match = o === opt
+        o.classList.toggle('active', match)
+        o.setAttribute('aria-selected', String(match))
+      })
+      toggleDropdown(false)
+      toast(`Khu vực giao hàng: ${city}`)
+    })
+
+    document.addEventListener('click', (e) => {
+      if (!picker.contains(e.target)) {
+        toggleDropdown(false)
+      }
+    })
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !dropdown.hidden) {
+        toggleDropdown(false)
+        btn.focus()
+      }
+    })
+  }
+
+  // 2. Danh muc dieu huong chinh voi chu cam va gach chan cam active
+  const navLinks = document.querySelectorAll('.main-nav a')
+  if (navLinks.length) {
+    const updateActiveByHash = () => {
+      const hash = window.location.hash || '#home'
+      navLinks.forEach((link) => {
+        const href = link.getAttribute('href')
+        link.classList.toggle('active', href === hash)
+      })
+    }
+
+    navLinks.forEach((link) => {
+      link.addEventListener('click', () => {
+        navLinks.forEach((l) => l.classList.remove('active'))
+        link.classList.add('active')
+      })
+    })
+
+    window.addEventListener('hashchange', updateActiveByHash)
+
+    const sectionIds = ['home', 'menu', 'my-orders', 'about', 'contact']
+    const sections = sectionIds.map((id) => document.getElementById(id)).filter(Boolean)
+
+    if ('IntersectionObserver' in window && sections.length) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const id = entry.target.id
+              navLinks.forEach((link) => {
+                link.classList.toggle('active', link.getAttribute('href') === `#${id}`)
+              })
+            }
+          })
+        },
+        { rootMargin: '-20% 0px -60% 0px', threshold: 0 }
+      )
+      sections.forEach((sec) => observer.observe(sec))
+    }
+  }
+}
+
+/* =========================
    KHỞI ĐỘNG
 ========================= */
 
@@ -1614,6 +1803,7 @@ async function startShop() {
     renderDishes()
     refreshCart()
     syncLoginButton()
+    initNavbarInteractive()
   } catch (error) {
     console.error('[CBM FOOD] Khởi tạo thất bại:', error)
     dishGrid.innerHTML = '<p class="muted">Không tải được thực đơn. Vui lòng kiểm tra console.</p>'

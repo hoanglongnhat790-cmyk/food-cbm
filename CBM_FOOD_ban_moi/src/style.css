@@ -2061,12 +2061,22 @@ body.modal-open {
    NÚT ĐẶT MÓN
 ========================= */
 
+.dish-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .order-btn {
   cursor: pointer;
 }
 
 .order-btn:hover {
   transform: translateY(-2px);
+}
+
+.order-options-btn {
+  cursor: pointer;
 }
 
 

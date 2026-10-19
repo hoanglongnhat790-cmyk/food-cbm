@@ -9,7 +9,6 @@
  */
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
-import { spawnSync } from 'node:child_process'
 import { extname, join, normalize, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -52,13 +51,15 @@ const exists = async (p) => {
 
 if (!flag('--no-build')) {
   console.log('▸ Đang build bản demo...')
-  /* Gọi npm qua .cmd trên Windows, không bật shell để tránh
-     cảnh báo chèn lệnh (DEP0190). */
-  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
-  const build = spawnSync(npm, ['run', 'build'], { cwd: root, stdio: 'inherit' })
-  if (build.status !== 0) {
+  /* Gọi thẳng API của Vite thay vì spawn `npm run build`: Node chặn
+     spawnSync('npm.cmd') bằng EINVAL trên Windows. */
+  try {
+    const { build } = await import('vite')
+    await build({ root })
+  } catch (error) {
     console.error('\n✗ Build thất bại. Sửa lỗi ở trên rồi chạy lại.')
-    process.exit(build.status ?? 1)
+    console.error(error)
+    process.exit(1)
   }
 }
 

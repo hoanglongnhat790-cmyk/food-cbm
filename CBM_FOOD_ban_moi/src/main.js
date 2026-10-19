@@ -104,13 +104,7 @@ const shell = () => `
       </div>
 
       <!-- Nut pill: Dang nhap -->
-      <button class="btn btn-pill btn-login" data-auth="login" title="Tài khoản cá nhân">
-        <svg class="pill-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
-        <span class="btn-label">Đăng nhập</span>
-      </button>
+      <button class="btn btn-pill btn-login" data-auth="login" title="Tài khoản cá nhân"><svg class="pill-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="btn-label">Đăng nhập</span></button>
 
       <!-- Nut pill: Quan tri -->
       <a href="/admin.html" class="btn btn-pill btn-admin" title="Trang quản trị">
@@ -398,13 +392,22 @@ const dishCard = (dish, index) => {
       </div>
       <div class="dish-foot">
         <span class="price">${money(dish.price)}</span>
-        <button
-          class="btn btn-sm btn-primary order-btn"
-          data-add="${escape(dish.code)}"
-          ${soldOut ? 'disabled' : ''}
-        >${
-          db.isSoldOut(dish) ? 'Hết hàng' : dish.status === 'unavailable' ? 'Tạm ngưng' : 'Đặt ngay'
-        }</button>
+        <div class="dish-actions">
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost order-options-btn"
+            data-add-options="${escape(dish.code)}"
+            ${soldOut ? 'disabled' : ''}
+            title="Chọn topping cho món này"
+          >Tuỳ chọn</button>
+          <button
+            class="btn btn-sm btn-primary order-btn"
+            data-add="${escape(dish.code)}"
+            ${soldOut ? 'disabled' : ''}
+          >${
+            db.isSoldOut(dish) ? 'Hết hàng' : dish.status === 'unavailable' ? 'Tạm ngưng' : 'Đặt ngay'
+          }</button>
+        </div>
       </div>
     </article>`
 }
@@ -815,8 +818,7 @@ const openCheckout = () => {
             ${saved.length ? `<div class="saved-addresses"><div class="field-label">Địa chỉ đã lưu</div>${saved.map((a) => `<button type="button" class="saved-address ${selected?.id === a.id ? 'is-active' : ''}" data-action="use-address" data-address-id="${escape(a.id)}"><b>${escape(a.label)}</b><span>${escape(a.receiver)} · ${escape(a.phone)}</span><small>${escape(addressText(a))}</small></button>`).join('')}</div>` : ''}
             <label class="field"><span>Người nhận *</span><input name="name" value="${escape(selected?.receiver ?? user?.name ?? '')}" required /></label>
             <label class="field"><span>Số điện thoại *</span><input name="phone" value="${escape(selected?.phone ?? user?.phone ?? '')}" inputmode="numeric" required /></label>
-            <label class="field"><span>Địa chỉ giao hàng *</span><textarea name="detail" required placeholder="Nhập đầy đủ địa chỉ: số nhà, đường, phường/xã, tỉnh/thành...">${escape(selected?.detail || selectedAddress || '')}</textarea></label>
-            <input type="hidden" name="address" value="${escape(selectedAddress)}" />
+            <label class="field"><span>Địa chỉ giao hàng *</span><textarea name="address" required placeholder="Nhập đầy đủ địa chỉ: số nhà, đường, phường/xã, tỉnh/thành...">${escape(selected?.detail || selectedAddress || '')}</textarea></label>
             <label class="save-address-check"><input type="checkbox" name="saveAddress" ${selected ? 'checked' : ''}/> Lưu địa chỉ này cho lần sau</label>
             <div class="checkout-choice">
               <span class="field-label">Hình thức nhận hàng</span>
@@ -1363,17 +1365,20 @@ document.addEventListener('click', async (event) => {
     return undefined
   }
 
+  /* "Đặt ngay" thêm thẳng vào giỏ. Trước đây nút này mở luôn bảng topping,
+     khiến mọi cú bấm thêm món đều bị lớp phủ chặn và giỏ không bao giờ có món.
+     Bảng topping vẫn mở được qua nút "Tuỳ chọn". */
   const addBtn = target.closest('[data-add]')
   if (addBtn) {
-    return openToppingSheet(addBtn.dataset.add)
-  }
-
-  const addDirectBtn = target.closest('[data-add-direct]')
-  if (addDirectBtn) {
-    const result = cart.add(addDirectBtn.dataset.addDirect, 1)
+    const result = cart.add(addBtn.dataset.add, 1)
     if (result.error) return toast(cartErrorMessage(result, addBtn.dataset.add), 'err')
     refreshCart()
     return toast('Đã thêm vào giỏ')
+  }
+
+  const optionsBtn = target.closest('[data-add-options]')
+  if (optionsBtn) {
+    return openToppingSheet(optionsBtn.dataset.addOptions)
   }
 
   const qtyBtn = target.closest('[data-qty]')
@@ -1449,8 +1454,7 @@ document.addEventListener('click', async (event) => {
       if (!address || !form) return undefined
       form.elements.name.value = address.receiver
       form.elements.phone.value = address.phone
-      form.elements.detail.value = address.detail || addressText(address)
-      form.elements.address.value = form.elements.detail.value
+      form.elements.address.value = address.detail || addressText(address)
       ui.querySelectorAll('.saved-address').forEach((b) => b.classList.toggle('is-active', b.dataset.addressId === address.id))
       return undefined
     }
@@ -1582,10 +1586,8 @@ ui.addEventListener('submit', async (event) => {
     const box = $('#checkoutError')
     const phone = String(data.get('phone') ?? '')
     /* Địa chỉ được nhập tự do, không còn phụ thuộc dữ liệu Tỉnh/Thành hay API địa chỉ. */
-    const detail = String(data.get('detail') ?? '').trim()
-    const parts = { province: '', district: '', ward: '', detail }
-    const address = detail
-    event.target.elements.address.value = address
+    const address = String(data.get('address') ?? '').trim()
+    const parts = { province: '', district: '', ward: '', detail: address }
     if (String(data.get('saveAddress') ?? '') === 'on') {
       const savedAddress = db.saveAddress({
         receiver: String(data.get('name') ?? ''), phone, ...parts, detail: parts.detail, isDefault: true,

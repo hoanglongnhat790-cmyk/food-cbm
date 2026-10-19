@@ -271,7 +271,6 @@ const statusBadge = (status) => {
 const orderCard = (order) => {
   const options = db.nextOrderStatuses(order.status)
   const actions = options
-    .filter((next) => next !== 'completed')
     .map((next) => {
       const meta = db.ORDER_STATUS[next]
       return `<button type="button" class="chip" data-action="order-status" data-code="${escape(
@@ -549,6 +548,17 @@ const dishForm = (dish) => `
         <span>Mô tả</span>
         <textarea name="description">${escape(dish?.description ?? '')}</textarea>
       </label>
+      <div class="field span-2">
+        <span>Biểu tượng khi không có ảnh</span>
+        <div class="emoji-grid">
+          ${db.EMOJIS.map(
+            (e) =>
+              `<button type="button" class="emoji-opt ${
+                state.emoji === e ? 'is-active' : ''
+              }" data-action="pick-emoji" data-emoji="${escape(e)}">${escape(e)}</button>`,
+          ).join('')}
+        </div>
+      </div>
       <label class="field">
         <span>Danh mục *</span>
         <select name="category">
@@ -607,17 +617,6 @@ const dishForm = (dish) => `
         <small class="field-hint">Chọn ảnh từ máy tính/điện thoại. Hệ thống tự nén ảnh để lưu vào dữ liệu app, không cần nhập URL.</small>
         <div class="dish-image-preview" id="dish-image-preview">${dish?.image ? `<img src="${escape(dish.image)}" alt="Ảnh hiện tại" />` : '<span>Chưa có ảnh món</span>'}</div>
       </label>
-      <div class="field span-2">
-        <span>Biểu tượng khi không có ảnh</span>
-        <div class="emoji-grid">
-          ${db.EMOJIS.map(
-            (e) =>
-              `<button type="button" class="emoji-opt ${
-                state.emoji === e ? 'is-active' : ''
-              }" data-action="pick-emoji" data-emoji="${escape(e)}">${escape(e)}</button>`,
-          ).join('')}
-        </div>
-      </div>
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" data-action="close-modal">Huỷ</button>
@@ -970,9 +969,6 @@ document.addEventListener('click', async (event) => {
     }
     if (action === 'order-status') {
       if (deny()) return undefined
-      if (target.dataset.status === 'completed') {
-        return toast('Trạng thái Hoàn thành chỉ do shipper xác nhận bằng ảnh giao hàng.', 'err')
-      }
       const updated = db.updateOrderStatus(target.dataset.code, target.dataset.status)
       if (!updated) return toast('Không cập nhật được đơn', 'err')
       toast(`${updated.code} → ${db.ORDER_STATUS[updated.status].label}`)

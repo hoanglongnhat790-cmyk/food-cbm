@@ -3,6 +3,7 @@ import * as db from './store.js'
 import * as cart from './cart.js'
 import * as auth from './auth.js'
 import { filterDishes } from './search.js'
+import { initAssistant } from './assistant.js'
 
 const $ = (sel) => document.querySelector(sel)
 const money = (n) => `${Number(n || 0).toLocaleString('vi-VN')}đ`
@@ -2099,6 +2100,13 @@ async function startShop() {
     refreshCart()
     syncLoginButton()
     initNavbarInteractive()
+    /* Chat gợi ý món + vòng quay: tự dựng DOM riêng nên lỗi của nó không
+       được làm sập trang bán hàng. */
+    try {
+      initAssistant({ db, cart, toast, onCartChange: refreshCart })
+    } catch (error) {
+      console.error('[CBM FOOD] Không khởi tạo được trợ lý AI:', error)
+    }
   } catch (error) {
     console.error('[CBM FOOD] Khởi tạo thất bại:', error)
     dishGrid.innerHTML = '<p class="muted">Không tải được thực đơn. Vui lòng kiểm tra console.</p>'

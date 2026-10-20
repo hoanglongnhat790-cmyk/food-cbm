@@ -2934,8 +2934,18 @@ body.modal-open {
 
   .header-actions {
     order: 2;
-    flex-wrap: nowrap;
+    /* PHẢI là wrap, không phải nowrap: ô tìm kiếm nằm CHỒNG bên trong
+       header-actions với flex-basis 100%, nên nếu cha gỡ wrap thì ô tìm
+       kiếm không thể xuống hàng riêng — nó kéo cả hàng rộng 575px trên
+       màn 390px, tràn ngang trang và đẩy các phần tử fixed (nút trợ lý AI)
+       ra ngoài màn hình. wrap cho phép: hàng 1 = tìm kiếm, hàng 2 = các nút. */
+    flex-wrap: wrap;
     gap: 8px;
+    min-width: 0;
+    /* flex-shrink: 0 ở rule gốc khiến header-actions giữ max-content (575px)
+       và không bao giờ chịu co lại. Phải cho phép co thì các hàng con
+       (tìm kiếm / các nút) mới bóp vừa màn hình. */
+    flex-shrink: 1;
   }
 
   /* Ô tìm kiếm chiếm trọn một hàng riêng */

@@ -3,6 +3,7 @@ import * as db from './store.js'
 import * as cart from './cart.js'
 import * as auth from './auth.js'
 import { filterDishes } from './search.js'
+import { mountGames } from './games-ui.js'
 
 const $ = (sel) => document.querySelector(sel)
 const money = (n) => `${Number(n || 0).toLocaleString('vi-VN')}đ`
@@ -80,6 +81,7 @@ const shell = () => `
     <nav class="main-nav" aria-label="Menu chính">
       <a href="#home" class="active"><span>Trang chủ</span></a>
       <a href="#menu"><span>Thực đơn</span></a>
+      <a href="#games"><span>Mini game</span></a>
       <a href="#my-orders"><span>Đơn của tôi</span></a>
       <a href="#about"><span>Giới thiệu</span></a>
       <a href="#contact"><span>Liên hệ</span></a>
@@ -229,6 +231,17 @@ const shell = () => `
     </div>
 
     <div class="dish-grid" id="dishGrid"></div>
+  </div>
+</section>
+
+<section id="games" class="games">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">Chơi game nhận quà</p>
+      <h2>Mini game — trúng voucher thật</h2>
+      <p>Cào thẻ, lật thẻ tìm cặp và đố vui ẩm thực. Quà trúng là mã giảm giá dùng ngay khi thanh toán.</p>
+    </div>
+    <div id="gamesMount"></div>
   </div>
 </section>
 
@@ -2061,7 +2074,7 @@ const initNavbarInteractive = () => {
 
     window.addEventListener('hashchange', updateActiveByHash)
 
-    const sectionIds = ['home', 'menu', 'my-orders', 'about', 'contact']
+    const sectionIds = ['home', 'menu', 'games', 'my-orders', 'about', 'contact']
     const sections = sectionIds.map((id) => document.getElementById(id)).filter(Boolean)
 
     if ('IntersectionObserver' in window && sections.length) {
@@ -2099,6 +2112,12 @@ async function startShop() {
     refreshCart()
     syncLoginButton()
     initNavbarInteractive()
+    /* Mini game dùng chung toast và huy hiệu giỏ: voucher trúng áp được ngay. */
+    mountGames({
+      container: document.querySelector('#gamesMount'),
+      toast,
+      refreshCart,
+    })
   } catch (error) {
     console.error('[CBM FOOD] Khởi tạo thất bại:', error)
     dishGrid.innerHTML = '<p class="muted">Không tải được thực đơn. Vui lòng kiểm tra console.</p>'

@@ -3445,3 +3445,201 @@ body.modal-open {
 
 .address-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 700px) { .address-grid-2 { grid-template-columns: 1fr; } }
+
+/* =========================================
+   MINI GAME: CÀO THẺ, LẬP THẺ, ĐỐ VUI
+========================================= */
+.games { padding: 64px 0; background: linear-gradient(180deg, #fff7f1 0%, #fffaf6 100%); }
+.game-tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.game-tab {
+  flex: 1 1 190px;
+  padding: 12px 16px;
+  border: 2px solid var(--border, #eadfd7);
+  border-radius: 14px;
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color .2s, background .2s, transform .15s;
+}
+.game-tab:hover { border-color: var(--brand); transform: translateY(-2px); }
+.game-tab.is-active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark); }
+.game-stage { min-height: 260px; }
+.game-panel {
+  background: #fff;
+  border: 1px solid #f0e4db;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(60, 25, 10, .06);
+}
+.game-lead { margin: 0 0 16px; color: #6f665f; font-size: 15px; }
+.game-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.muted { color: #8b827b; font-size: 13px; }
+
+/* --- (1) Cào thẻ may mắn --- */
+.scratch-card {
+  position: relative;
+  width: min(420px, 100%);
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 2px dashed #e3d5cb;
+  margin: 0 auto;
+  touch-action: none; /* chạm không cuộn trang khi cào */
+}
+.scratch-prize-layer { position: absolute; inset: 0; display: grid; place-items: center; }
+.scratch-canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+.scratch-prize { text-align: center; padding: 12px; }
+.scratch-prize span { font-size: 40px; display: block; margin-bottom: 6px; }
+.scratch-prize p { margin: 2px 0; font-weight: 700; color: var(--ink); }
+.scratch-prize .scratch-prize-title { font-size: 19px; color: var(--brand-dark); }
+.scratch-prize .scratch-prize-detail { font-size: 13px; font-weight: 600; color: #6f665f; }
+.scratch-prize.is-blank p { color: #8b827b; font-weight: 600; }
+.scratch-result { margin-top: 14px; }
+
+/* --- (2) Lật thẻ tìm cặp --- */
+.memory-hud { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; font-size: 14px; color: #6f665f; }
+.memory-hud b { color: var(--brand-dark); }
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.memory-card {
+  aspect-ratio: 1;
+  perspective: 700px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+.memory-card:disabled { cursor: default; }
+.memory-card-inner {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform .35s;
+}
+.memory-card.is-flipped .memory-card-inner { transform: rotateY(180deg); }
+.memory-card-back, .memory-card-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 14px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.memory-card-back { background: linear-gradient(145deg, var(--brand), var(--brand-dark)); font-size: 26px; }
+.memory-card-face {
+  transform: rotateY(180deg);
+  background: #fff7f1;
+  border: 2px solid var(--brand-soft);
+  font-size: 28px;
+  overflow: hidden;
+  padding: 4px;
+}
+.memory-card-face img { width: 60%; height: 60%; object-fit: cover; border-radius: 10px; }
+.memory-card-face em { font-style: normal; font-size: 10px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.2; }
+.memory-card.is-matched .memory-card-face { border-color: #2f9e63; background: #eefaf3; }
+.memory-result { margin-top: 14px; text-align: center; }
+.memory-win p { margin: 6px 0; }
+.memory-stars { font-size: 30px; color: #f5b301; letter-spacing: 4px; margin: 0; }
+
+/* --- (3) Đố vui ẩm thực --- */
+.quiz-progress { height: 8px; border-radius: 999px; background: #f3e7dd; overflow: hidden; margin-bottom: 16px; }
+.quiz-progress span { display: block; height: 100%; background: var(--brand); border-radius: 999px; transition: width .3s; }
+.quiz-prompt { font-size: 18px; font-weight: 800; color: var(--ink); margin: 0 0 14px; }
+.quiz-options { display: grid; gap: 10px; }
+.quiz-option {
+  text-align: left;
+  padding: 13px 16px;
+  border: 2px solid #eadfd7;
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.quiz-option:hover:not(:disabled) { border-color: var(--brand); background: var(--brand-soft); }
+.quiz-option:disabled { cursor: default; opacity: .9; }
+.quiz-option.is-correct { border-color: #2f9e63; background: #eefaf3; color: #1c7a47; }
+.quiz-option.is-wrong { border-color: #d64545; background: #fdf0f0; color: #a33232; }
+.quiz-feedback { margin-top: 14px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.quiz-feedback p { margin: 0; font-weight: 700; }
+.quiz-feedback .is-correct { color: #2f9e63; }
+.quiz-feedback .is-wrong { color: #d64545; }
+.quiz-done { text-align: center; }
+.quiz-done .btn { margin: 10px 6px 0; }
+.quiz-score { font-size: 44px; font-weight: 900; color: var(--brand-dark); margin: 0; }
+
+/* --- Quà trúng & voucher thật --- */
+.reward-pop {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 14px;
+  border: 2px solid var(--brand);
+  border-radius: 16px;
+  background: var(--brand-soft);
+}
+.reward-pop-emoji { font-size: 30px; }
+.reward-pop-main { display: grid; gap: 2px; flex: 1 1 180px; }
+.reward-pop-main strong { color: var(--brand-dark); }
+.reward-pop-main code {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px dashed var(--brand);
+  font-weight: 800;
+  letter-spacing: 1px;
+  width: fit-content;
+}
+.reward-pop-main small { color: #6f665f; }
+.reward-pop-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.game-rewards { margin-top: 26px; }
+.game-rewards h3 { margin: 0 0 10px; font-size: 16px; color: var(--ink); }
+.reward-shelf { display: flex; gap: 10px; flex-wrap: wrap; }
+.reward-card {
+  display: grid;
+  gap: 3px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #eadfd7;
+  font-size: 13px;
+}
+.reward-card code { font-weight: 800; letter-spacing: 1px; }
+.reward-card.is-live { border-color: #2f9e63; background: #f2fbf6; }
+.reward-card.is-dead { opacity: .65; }
+
+/* --- Responsive --- */
+@media (max-width: 900px) {
+  .memory-grid { max-width: 460px; }
+}
+@media (max-width: 640px) {
+  .games { padding: 44px 0; }
+  .game-panel { padding: 16px; }
+  .memory-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .memory-card-face em { font-size: 9px; }
+  .quiz-prompt { font-size: 16px; }
+  .scratch-card { aspect-ratio: 4 / 3; }
+  .reward-pop { flex-direction: column; align-items: stretch; text-align: center; }
+  .reward-pop-actions { justify-content: center; }
+}
+@media (max-width: 420px) {
+  .game-tab { flex-basis: 100%; }
+}

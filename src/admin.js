@@ -310,6 +310,16 @@ const orderCard = (order) => {
         <span class="is-total">Tổng: ${money(order.total)}</span>
         ${order.note ? `<span>Ghi chú: ${escape(order.note)}</span>` : ''}
       </div>
+      ${
+        order.returnRequest?.status === 'requested'
+          ? `<div class="admin-return is-requested">↩️ Khách yêu cầu hoàn hàng · Lý do: ${escape(order.returnRequest.reason || '')}${order.returnRequest.note ? ` · ${escape(order.returnRequest.note)}` : ''}</div>`
+          : ''
+      }
+      ${
+        order.returnInfo
+          ? `<div class="admin-return">↩️ Đã hoàn hàng · Lý do: ${escape(order.returnInfo.reason || '')} · ${order.returnInfo.distanceKm || 0} km · Phí hoàn ${money(order.returnInfo.fee || 0)}</div>`
+          : ''
+      }
       <div class="status-actions">${
         actions || '<small class="muted">Đơn đã kết thúc, không cần thao tác.</small>'
       } ${deliveryWait}</div>

@@ -114,6 +114,20 @@ export const EMOJIS = ['🍜', '🍲', '🥗', '🍚', '🥖', '🍰', '🥤', '
 export const FREE_SHIP_FROM = 150000
 export const SHIP_FEE = 15000
 
+/* Hoàn hàng (giao ngược): khách yêu cầu shipper mang hàng về quán.
+   Phí chuyến hoàn = 4.000đ cho mỗi km. */
+export const RETURN_FEE_PER_KM = 4000
+
+/** Lý do khách chọn khi yêu cầu huỷ / hoàn hàng. */
+export const RETURN_REASONS = [
+  'Không còn nhu cầu, muốn huỷ đơn',
+  'Đặt nhầm món / số lượng',
+  'Giao quá lâu, không đợi được',
+  'Tìm được nơi khác phù hợp hơn',
+  'Cần đổi địa chỉ / thời gian nhận',
+  'Lý do khác',
+]
+
 // Topping dùng chung cho toàn bộ cửa hàng. Có thể mở rộng thêm trong admin sau này.
 export const TOPPINGS = [
   { id: 'trung-op-la', name: 'Trứng ốp la', price: 10000, emoji: '🍳' },
@@ -649,6 +663,8 @@ export const createOrder = ({
     receivedAt: null,
     receivedByCustomer: false,
     deliveryProof: null,
+    returnRequest: null,
+    returnInfo: null,
     shipper: null,
     status: 'pending',
     userId,
@@ -765,6 +781,35 @@ export const saveOrderDeliveryProof = (key, { shipperId = '', shipperName = '', 
   return copyOrder(next)
 }
 
+/**
+ * Lưu ảnh shipper chụp lúc lấy hàng tại quán (bắt buộc trước khi giao).
+ * Đây là bằng chứng shipper đã nhận đủ món từ nhà hàng.
+ */
+export const saveOrderPickupProof = (key, { shipperId = '', shipperName = '', photo = '', note = '' } = {}) => {
+  const index = orders.findIndex((o) => o.code === key || o.id === key)
+  if (index < 0) return null
+  const previous = orders[index]
+  const existingShipper = previous.shipper || {}
+  const next = {
+    ...previous,
+    shipper: {
+      id: str(shipperId, existingShipper.id),
+      name: str(shipperName, existingShipper.name || 'Shipper CBM FOOD'),
+      phone: existingShipper.phone,
+      email: existingShipper.email,
+    },
+    pickupProof: {
+      photo: typeof photo === 'string' && photo.startsWith('data:image/') && photo.length <= 7 * 1024 * 1024 ? photo : '',
+      note: str(note),
+      at: Date.now(),
+      source: 'shipper',
+    },
+  }
+  orders[index] = next
+  persistOrders()
+  return copyOrder(next)
+}
+
 export const confirmOrderReceived = (key, userId = null) => {
   const index = orders.findIndex((o) => o.code === key || o.id === key)
   if (index < 0) return { error: 'Không tìm thấy đơn hàng' }
@@ -862,6 +907,9 @@ const copyOrder = (order) => ({
   voucher: order.voucher ? { ...order.voucher } : null,
   shipper: order.shipper ? { ...order.shipper } : null,
   deliveryProof: order.deliveryProof ? { ...order.deliveryProof } : null,
+  pickupProof: order.pickupProof ? { ...order.pickupProof } : null,
+  returnRequest: order.returnRequest ? { ...order.returnRequest } : null,
+  returnInfo: order.returnInfo ? { ...order.returnInfo } : null,
 })
 
 /**
@@ -903,6 +951,94 @@ export const cancelOrder = (key, userId = null) => {
   }
   if (restoreOrderResources(order)) order.stockRestored = true
   orders = orders.map((o, i) => (i === index ? order : o))
+  persistOrders()
+  return copyOrder(order)
+}
+
+/* ===================== HOÀN HÀNG (GIAO NGƯỢC) ===================== */
+
+/**
+ * Khách được yêu cầu hoàn hàng khi đơn đang xử lý (nhà hàng đã xác nhận hoặc
+ * shipper đang giao) và chưa có yêu cầu/hoàn hàng nào trước đó.
+ */
+export const canRequestReturn = (order) =>
+  Boolean(order) &&
+  ['confirmed', 'delivering'].includes(order.status) &&
+  !order.returnInfo &&
+  !['requested', 'completed'].includes(order.returnRequest?.status)
+
+/** Khách gửi yêu cầu hoàn hàng kèm lý do; shipper sẽ mang hàng về quán. */
+export const requestOrderReturn = (key, { userId = null, reason = '', note = '' } = {}) => {
+  const index = orders.findIndex((o) => o.id === key || o.code === key)
+  if (index === -1) return { error: 'Không tìm thấy đơn hàng' }
+  const previous = orders[index]
+  if (userId && previous.userId !== userId) return { error: 'Bạn không thao tác được đơn của người khác' }
+  if (!canRequestReturn(previous)) return { error: 'Đơn này không thể yêu cầu hoàn hàng' }
+  const finalReason = RETURN_REASONS.includes(str(reason)) ? str(reason) : RETURN_REASONS[0]
+  const now = Date.now()
+  const order = {
+    ...previous,
+    returnRequest: {
+      reason: finalReason,
+      note: str(note),
+      at: now,
+      status: 'requested',
+      requestedBy: 'customer',
+    },
+    history: [
+      ...(previous.history ?? []),
+      { status: previous.status, at: now, actor: 'Khách hàng', action: 'Yêu cầu hoàn hàng', reason: finalReason },
+    ],
+  }
+  orders[index] = order
+  persistOrders()
+  return { order: copyOrder(order) }
+}
+
+/**
+ * Shipper xác nhận mang hàng về quán (chuyến giao ngược).
+ * Phí hoàn hàng = 4.000đ × số km. Đơn chuyển sang "Đã huỷ" kèm `returnInfo`
+ * để giao diện hiển thị trạng thái "Đã hoàn hàng".
+ */
+export const saveOrderReturn = (key, { shipperId = '', shipperName = '', photo = '', note = '', distanceKm = 0, fee = 0 } = {}) => {
+  const index = orders.findIndex((o) => o.id === key || o.code === key)
+  if (index === -1) return null
+  const previous = orders[index]
+  if (!['confirmed', 'delivering'].includes(previous.status)) return null
+  const existingShipper = previous.shipper || {}
+  const km = Math.max(0, Math.round((Number(distanceKm) || 0) * 10) / 10)
+  const finalFee = Math.max(0, Math.round(Number(fee) || 0))
+  const now = Date.now()
+  const reason = str(previous.returnRequest?.reason)
+  const order = {
+    ...previous,
+    shipper: {
+      id: str(shipperId, existingShipper.id),
+      name: str(shipperName, existingShipper.name || 'Shipper CBM FOOD'),
+      phone: existingShipper.phone,
+      email: existingShipper.email,
+    },
+    returnInfo: {
+      reason,
+      note: str(note || previous.returnRequest?.note),
+      photo: typeof photo === 'string' && photo.startsWith('data:image/') && photo.length <= 7 * 1024 * 1024 ? photo : '',
+      distanceKm: km,
+      fee: finalFee,
+      at: now,
+      source: 'shipper',
+    },
+    returnRequest: previous.returnRequest
+      ? { ...previous.returnRequest, status: 'completed', resolvedAt: now }
+      : null,
+    status: 'cancelled',
+    cancelledBy: 'shipper',
+    history: [
+      ...(previous.history ?? []),
+      { status: 'cancelled', at: now, actor: str(shipperName, existingShipper.name), action: 'Shipper hoàn hàng về quán', reason },
+    ],
+  }
+  if (restoreOrderResources(order)) order.stockRestored = true
+  orders[index] = order
   persistOrders()
   return copyOrder(order)
 }

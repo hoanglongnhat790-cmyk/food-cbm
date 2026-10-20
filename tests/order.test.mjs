@@ -338,6 +338,111 @@ test('huỷ đơn không làm doi doanh thu', async () => {
   assert.equal(store.stats().revenue, store.findOrder(a1.code).total, 'đơn huỷ khong tinh doanh thu')
 })
 
+/* ===================== HOÀN HÀNG (GIAO NGƯỢC) ===================== */
+
+test('canRequestReturn chi cho don dang xu ly va chua yeu cau', async () => {
+  const { store, items } = await setup()
+  const { order } = store.createOrder({ customer: validCustomer, items, userId: KHACH_A })
+  assert.equal(store.canRequestReturn(store.findOrder(order.code)), false, 'don cho xac nhan khong duoc')
+  store.updateOrderStatus(order.code, 'confirmed')
+  assert.equal(store.canRequestReturn(store.findOrder(order.code)), true, 'don da xac nhan duoc')
+  store.updateOrderStatus(order.code, 'delivering')
+  assert.equal(store.canRequestReturn(store.findOrder(order.code)), true, 'don dang giao duoc')
+})
+
+test('khach yeu cau hoan hang luu ly do vao don', async () => {
+  const { store, items } = await setup()
+  const { order } = store.createOrder({ customer: validCustomer, items, userId: KHACH_A })
+  store.updateOrderStatus(order.code, 'delivering')
+  const reason = store.RETURN_REASONS[1]
+  const result = store.requestOrderReturn(order.code, { userId: KHACH_A, reason, note: 'giao cham' })
+  assert.ok(!result.error, `yeu cau that bai: ${result.error}`)
+  assert.equal(result.order.returnRequest.status, 'requested')
+  assert.equal(result.order.returnRequest.reason, reason)
+  assert.equal(result.order.returnRequest.note, 'giao cham')
+  const saved = store.findOrder(order.code)
+  assert.equal(saved.status, 'delivering', 'khong doi trang thai khi moi yeu cau')
+  assert.equal(saved.history.at(-1).action, 'Yêu cầu hoàn hàng')
+})
+
+test('khong yeu cau hoan hang cho don cho xac nhan', async () => {
+  const { store, items } = await setup()
+  const { order } = store.createOrder({ customer: validCustomer, items, userId: KHACH_A })
+  assert.ok(store.requestOrderReturn(order.code, { userId: KHACH_A }).error)
+})
+
+test('khong yeu cau hoan hang hai lan', async () => {
+  const { store, items } = await setup()
+  const { order } = store.createOrder({ customer: validCustomer, items, userId: KHACH_A })
+  store.updateOrderStatus(order.code, 'delivering')
+  assert.ok(!store.requestOrderReturn(order.code, { userId: KHACH_A, reason: store.RETURN_REASONS[0] }).error)
+  const again = store.requestOrderReturn(order.code, { userId: KHACH_A, reason: store.RETURN_REASONS[0] })
+  assert.ok(again.error, 'lan hai phai bi chan')
+})
+
+test('khong yeu cau hoan hang don cua khach khac', async () => {
+  const { store, items } = await setup()
+  const { order } = store.createOrder({ customer: validCustomer, items, userId: KHACH_A })
+  store.updateOrderStatus(order.code, 'delivering')
+  const result = store.requestOrderReturn(order.code, { userId: KHACH_B, reason: store.RETURN_REASONS[0] })
+  assert.ok(result.error, 'khach B phai bi chan')
+})
+
+test('shipper hoan hang luu phi 4000/km va tra ton kho', async () => {
+  const { store, items } = await setup()
+  const { order } = store.createOrder({ customer: validCustomer, items, userId: KHACH_A })
+  store.updateOrderStatus(order.code, 'confirmed')
+  store.updateOrderStatus(order.code, 'delivering')
+  store.requestOrderReturn(order.code, { userId: KHACH_A, reason: store.RETURN_REASONS[2] })
+  const beforeStock = store.findDish(items[0].key).stock
+  const km = 3.5
+  const fee = Math.round(km * store.RETURN_FEE_PER_KM)
+  const saved = store.saveOrderReturn(order.code, {
+    shipperId: 'SH-1',
+    shipperName: 'Shipper A',
+    distanceKm: km,
+    fee,
+    note: 'tra quan',
+  })
+  assert.ok(saved, 'phai luu duoc')
+  assert.equal(saved.status, 'cancelled')
+  assert.equal(saved.cancelledBy, 'shipper')
+  assert.equal(saved.returnInfo.distanceKm, km)
+  assert.equal(saved.returnInfo.fee, fee)
+  assert.equal(saved.returnInfo.reason, store.RETURN_REASONS[2])
+  assert.equal(saved.returnRequest.status, 'completed')
+  assert.equal(store.findOrder(order.code).returnInfo.fee, fee, 'phai ghi xuong du lieu')
+  if (beforeStock !== null && beforeStock !== undefined) {
+    assert.equal(store.findDish(items[0].key).stock, beforeStock + items[0].qty, 'phai hoan ton kho')
+  }
+})
+
+test('saveOrderReturn tu choi don khong o trang thai giao', async () => {
+  const { store, items } = await setup()
+  const { order } = store.createOrder({ customer: validCustomer, items })
+  assert.equal(store.saveOrderReturn(order.code, { distanceKm: 1, fee: 4000 }), null)
+})
+
+test('ban sao don khong sua duoc returnRequest/returnInfo', async () => {
+  const { store, items } = await setup()
+  const { order } = store.createOrder({ customer: validCustomer, items, userId: KHACH_A })
+  store.updateOrderStatus(order.code, 'delivering')
+  store.requestOrderReturn(order.code, { userId: KHACH_A, reason: store.RETURN_REASONS[0] })
+  store.saveOrderReturn(order.code, { shipperId: 'SH-1', shipperName: 'S', distanceKm: 2, fee: 8000 })
+  const copy = store.findOrder(order.code)
+  copy.returnInfo.fee = 999999
+  copy.returnRequest.reason = 'x'
+  const fresh = store.findOrder(order.code)
+  assert.equal(fresh.returnInfo.fee, 8000, 'khong sua duoc returnInfo')
+  assert.equal(fresh.returnRequest.reason, store.RETURN_REASONS[0], 'khong sua duoc returnRequest')
+})
+
+test('hang so phi hoan hang va ly do duoc xuat ra', async () => {
+  const { store } = await freshModules()
+  assert.equal(store.RETURN_FEE_PER_KM, 4000)
+  assert.ok(Array.isArray(store.RETURN_REASONS) && store.RETURN_REASONS.length >= 3)
+})
+
 /* ===================== ĐÁNH GIÁ MÓN ===================== */
 
 /** Tạo một đơn của KHACH_A ở trạng thái `status` (mặc định đã giao xong). */

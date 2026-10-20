@@ -742,6 +742,186 @@ const optionList = (items, placeholder, selectedName = '') => {
 
 const addressText = (parts = {}) => [parts.detail, parts.ward, parts.province].filter(Boolean).join(', ')
 
+/* =======================================================================
+   GỢI Ý ĐỊA CHỈ CHUẨN + ĐỊNH VỊ
+   Dò trực tiếp trong dữ liệu hành chính đã đóng gói (34 tỉnh/thành +
+   3.321 phường/xã) nên nhanh, không phụ thuộc API bên ngoài. Nút "Định vị"
+   chỉ gọi reverse-geocode khi khách bấm.
+   ======================================================================= */
+
+/** Bỏ dấu tiếng Việt + thường hoá để so khớp kiểu "ba dinh" ≈ "Ba Đình". */
+const foldVN = (value) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+
+const addressPlaceIndex = (() => {
+  const index = []
+  const provinceNameByCode = new Map()
+  for (const province of addressData.provinces) {
+    provinceNameByCode.set(province.code, province.name)
+    index.push({
+      label: province.name,
+      full: province.name,
+      sub: 'Tỉnh/Thành phố',
+      words: foldVN(province.name),
+      provinceWords: foldVN(province.name),
+    })
+  }
+  for (const [provinceCode, wards] of addressData.wardsByProvince) {
+    const provinceName = provinceNameByCode.get(provinceCode) ?? ''
+    const provinceWords = foldVN(provinceName)
+    for (const ward of wards) {
+      index.push({
+        label: ward.name,
+        full: provinceName ? `${ward.name}, ${provinceName}` : ward.name,
+        sub: provinceName || 'Phường/Xã',
+        words: foldVN(ward.name),
+        provinceWords,
+      })
+    }
+  }
+  return index
+})()
+
+const findAddressSuggestions = (query, limit = 8) => {
+  /* Chỉ dò theo đoạn khách đang gõ (sau dấu phẩy cuối), nên "12 Lê Lợi, Ba Đình"
+     vẫn ra gợi ý cho "Ba Đình". Bỏ qua số nhà để "12 Ba Đình" vẫn khớp. */
+  const segments = String(query ?? '').split(',')
+  const active = foldVN(segments[segments.length - 1])
+    .split(' ')
+    .filter((token) => token && !/^\d+$/.test(token))
+  if (active.join('').length < 2) return []
+  const activeText = active.join(' ')
+  const matches = []
+  for (const place of addressPlaceIndex) {
+    const ownWords = place.words.split(' ')
+    const provinceWords = place.provinceWords.split(' ')
+    const ownHit = active.every((token) => ownWords.some((word) => word.startsWith(token)))
+    if (!ownHit) {
+      const provinceHit = active.every((token) => provinceWords.some((word) => word.startsWith(token)))
+      if (!provinceHit) continue
+    }
+    /* Khớp đúng tên địa điểm ưu tiên hơn khớp nhờ tên tỉnh, để gõ "Hà Nội"
+       ra Thành phố Hà Nội chứ không phải tràn ngập phường/xã của Hà Nội. */
+    const rank = !ownHit ? 3 : place.words === activeText ? 0 : place.words.startsWith(activeText) ? 1 : 2
+    matches.push({ place, rank })
+  }
+  matches.sort((a, b) => a.rank - b.rank || a.place.label.length - b.place.label.length)
+  return matches.slice(0, limit).map((entry) => entry.place)
+}
+
+let addressSuggestionCache = []
+
+const closeAddressSuggestions = () => {
+  const box = ui.querySelector('.address-suggest')
+  if (box && !box.hidden) {
+    box.hidden = true
+    box.innerHTML = ''
+  }
+}
+
+const renderAddressSuggestions = (list) => {
+  const box = ui.querySelector('.address-suggest')
+  if (!box) return
+  addressSuggestionCache = list
+  if (!list.length) {
+    box.hidden = true
+    box.innerHTML = ''
+    return
+  }
+  box.innerHTML = list
+    .map(
+      (place, index) => `
+      <li>
+        <button type="button" data-action="pick-address" data-index="${index}">
+          <span class="address-suggest-pin" aria-hidden="true">${place.sub === 'Tỉnh/Thành phố' ? '🏙️' : '📍'}</span>
+          <span class="address-suggest-text">
+            <b>${escape(place.label)}</b>
+            <small>${escape(place.sub)}</small>
+          </span>
+        </button>
+      </li>`,
+    )
+    .join('')
+  box.hidden = false
+}
+
+/** Thay đoạn cuối khách gõ dở bằng tên địa chỉ chuẩn, giữ phần số nhà/đường. */
+const applyAddressSuggestion = (input, place) => {
+  const parts = String(input.value ?? '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+  const placeWords = place.words.split(' ')
+  while (parts.length) {
+    const tailWords = foldVN(parts[parts.length - 1]).split(' ').filter(Boolean)
+    if (tailWords.length && tailWords.every((word) => placeWords.includes(word))) parts.pop()
+    else break
+  }
+  const prefix = parts.join(', ')
+  input.value = prefix ? `${prefix}, ${place.full}` : place.full
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+const locateDeliveryAddress = () => {
+  const form = ui.querySelector('#checkoutForm')
+  const input = form?.elements?.address
+  if (!input) return undefined
+  if (!navigator.geolocation) return toast('Thiết bị không hỗ trợ định vị', 'err')
+
+  const button = ui.querySelector('[data-action="locate-address"]')
+  const label = button?.querySelector('.address-locate-label')
+  const setLoading = (loading, text) => {
+    if (!button) return
+    button.disabled = loading
+    button.classList.toggle('is-loading', loading)
+    if (label) label.textContent = text
+  }
+
+  closeAddressSuggestions()
+  setLoading(true, 'Đang định vị...')
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const { latitude, longitude } = position.coords
+      let address = ''
+      try {
+        const url =
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}` +
+          `&lon=${longitude}&accept-language=vi&zoom=18`
+        const response = await fetch(url, { headers: { Accept: 'application/json' } })
+        if (response.ok) {
+          const data = await response.json()
+          address = String(data?.display_name ?? '').trim()
+        }
+      } catch (error) {
+        console.warn('[CBM FOOD] Không dịch được toạ độ thành địa chỉ:', error)
+      }
+      input.value = address || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      setLoading(false, 'Định vị vị trí của tôi')
+      input.focus()
+      toast(
+        address
+          ? 'Đã điền địa chỉ theo vị trí hiện tại'
+          : 'Đã lấy toạ độ GPS, bạn hãy bổ sung số nhà/đường',
+      )
+    },
+    (error) => {
+      setLoading(false, 'Định vị vị trí của tôi')
+      if (error?.code === 1) toast('Bạn chưa cho phép truy cập vị trí', 'err')
+      else toast('Không lấy được vị trí hiện tại', 'err')
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+  )
+  return undefined
+}
+
 const addressSelects = () => `
   <div class="address-grid address-grid-2">
     <label class="field"><span>Tỉnh/Thành *</span><select name="province" required><option value="">Đang tải tỉnh/thành...</option></select></label>
@@ -818,7 +998,19 @@ const openCheckout = () => {
             ${saved.length ? `<div class="saved-addresses"><div class="field-label">Địa chỉ đã lưu</div>${saved.map((a) => `<button type="button" class="saved-address ${selected?.id === a.id ? 'is-active' : ''}" data-action="use-address" data-address-id="${escape(a.id)}"><b>${escape(a.label)}</b><span>${escape(a.receiver)} · ${escape(a.phone)}</span><small>${escape(addressText(a))}</small></button>`).join('')}</div>` : ''}
             <label class="field"><span>Người nhận *</span><input name="name" value="${escape(selected?.receiver ?? user?.name ?? '')}" required /></label>
             <label class="field"><span>Số điện thoại *</span><input name="phone" value="${escape(selected?.phone ?? user?.phone ?? '')}" inputmode="numeric" required /></label>
-            <label class="field"><span>Địa chỉ giao hàng *</span><textarea name="address" required placeholder="Nhập đầy đủ địa chỉ: số nhà, đường, phường/xã, tỉnh/thành...">${escape(selected?.detail || selectedAddress || '')}</textarea></label>
+            <div class="field address-field">
+              <span>Địa chỉ giao hàng *</span>
+              <div class="address-search">
+                <input name="address" required autocomplete="street-address" placeholder="Số nhà, đường, phường/xã, tỉnh/thành..." value="${escape(selected?.detail || selectedAddress || '')}" />
+                <ul class="address-suggest" role="listbox" aria-label="Gợi ý địa chỉ chuẩn" hidden></ul>
+              </div>
+              <div class="address-tools">
+                <button type="button" class="address-locate" data-action="locate-address" title="Dùng GPS để điền địa chỉ hiện tại">
+                  <span aria-hidden="true">🎯</span><span class="address-locate-label">Định vị vị trí của tôi</span>
+                </button>
+                <small class="address-tip">Gõ tên phường/xã hoặc tỉnh/thành để chọn gợi ý địa chỉ chuẩn.</small>
+              </div>
+            </div>
             <label class="save-address-check"><input type="checkbox" name="saveAddress" ${selected ? 'checked' : ''}/> Lưu địa chỉ này cho lần sau</label>
             <div class="checkout-choice">
               <span class="field-label">Hình thức nhận hàng</span>
@@ -1104,6 +1296,28 @@ const myOrderCard = (order) => {
     ${orderTrack(order)}
     ${order.status === 'delivering' ? `<div class="my-order-actions"><button type="button" class="btn btn-primary btn-sm" data-action="confirm-received" data-code="${escape(order.code)}">✅ Tôi đã nhận đơn hàng</button></div>` : ''}
     ${order.status === 'completed' && order.receivedByCustomer ? `<p class="received-note">✅ Khách đã xác nhận đã nhận hàng${order.receivedAt ? ` lúc ${timeText(order.receivedAt)}` : ''}.</p>` : ''}
+    ${
+      order.returnInfo
+        ? `<div class="return-info">↩️ Đã hoàn hàng${order.returnInfo.reason ? ` · Lý do: ${escape(order.returnInfo.reason)}` : ''}${order.returnInfo.fee ? ` · Phí hoàn: ${money(order.returnInfo.fee)}` : ''}</div>`
+        : ''
+    }
+    ${
+      order.returnRequest?.status === 'requested'
+        ? `<p class="return-request-note">↩️ Bạn đã yêu cầu hoàn hàng${order.returnRequest.reason ? `: ${escape(order.returnRequest.reason)}` : ''}. Shipper sẽ mang hàng về quán.</p>`
+        : ''
+    }
+    ${
+      db.canRequestReturn(order)
+        ? `<div class="my-order-actions">
+            <button
+              type="button"
+              class="btn btn-outline btn-sm"
+              data-action="request-return"
+              data-code="${escape(order.code)}"
+            >↩️ Yêu cầu hoàn hàng</button>
+          </div>`
+        : ''
+    }
 
     ${user ? orderReviewBlock(order, user) : ''}
 
@@ -1220,6 +1434,65 @@ const cancelOrder = (code) => {
   lastOrdersSignature = null
   refreshMyOrders()
   return toast(`Đã huỷ đơn ${result.code}`)
+}
+
+const askReturnOrder = (code) => {
+  const order = db.findOrder(code)
+  if (!order) return toast('Không tìm thấy đơn hàng', 'err')
+  if (!db.canRequestReturn(order)) {
+    return toast(`Đơn ${order.code} không thể yêu cầu hoàn hàng`, 'err')
+  }
+  const reasons = db.RETURN_REASONS ?? []
+  lastFocused = document.activeElement
+  ui.innerHTML = `
+    <div class="modal-backdrop-cart" data-close="1">
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="Yêu cầu hoàn hàng">
+        <header class="sheet-head">
+          <h2>Yêu cầu hoàn hàng ${escape(order.code)}</h2>
+          <button type="button" class="icon-btn" data-close="1" aria-label="Đóng">✕</button>
+        </header>
+        <div class="sheet-body">
+          <p>
+            Tổng <b>${money(order.total)}</b> · ${order.items.reduce((sum, i) => sum + i.qty, 0)} món.
+            Shipper sẽ mang hàng về quán và đơn được đánh dấu hoàn hàng.
+          </p>
+          <div class="return-reasons">
+            ${reasons
+              .map(
+                (reason, index) => `<label class="reason-opt">
+                  <input type="radio" name="return-reason" value="${escape(reason)}" ${index === 0 ? 'checked' : ''} />
+                  <span>${escape(reason)}</span>
+                </label>`,
+              )
+              .join('')}
+          </div>
+          <label class="return-note-field"><span>Ghi chú thêm</span>
+            <textarea name="return-note" rows="3" placeholder="Mô tả chi tiết (không bắt buộc)"></textarea>
+          </label>
+        </div>
+        <div class="sheet-foot">
+          <button type="button" class="btn btn-ghost btn-block" data-close="1">Giữ lại</button>
+          <button
+            type="button"
+            class="btn btn-primary btn-block"
+            data-action="request-return-confirm"
+            data-code="${escape(order.code)}"
+          >Yêu cầu hoàn hàng</button>
+        </div>
+      </div>
+    </div>`
+  document.body.style.overflow = 'hidden'
+}
+
+const requestReturn = (code) => {
+  const reason = ui.querySelector('input[name="return-reason"]:checked')?.value ?? ''
+  const note = String(ui.querySelector('textarea[name="return-note"]')?.value ?? '').trim()
+  const result = db.requestOrderReturn(code, { userId: auth.getUser()?.id ?? null, reason, note })
+  closePanels()
+  if (result.error) return toast(result.error, 'err')
+  lastOrdersSignature = null
+  refreshMyOrders()
+  return toast(`Đã gửi yêu cầu hoàn hàng ${result.order.code}`)
 }
 
 /* =========================
@@ -1356,6 +1629,9 @@ document.addEventListener('click', async (event) => {
   if (target.classList.contains('drawer-backdrop')) return closePanels()
   if (target.classList.contains('modal-backdrop-cart')) return closePanels()
 
+  /* Bấm ra ngoài ô địa chỉ thì đóng danh sách gợi ý. */
+  if (!target.closest('.address-search')) closeAddressSuggestions()
+
   if (target.closest('#searchClear')) {
     event.preventDefault()
     state.query = ''
@@ -1456,8 +1732,18 @@ document.addEventListener('click', async (event) => {
       form.elements.phone.value = address.phone
       form.elements.address.value = address.detail || addressText(address)
       ui.querySelectorAll('.saved-address').forEach((b) => b.classList.toggle('is-active', b.dataset.addressId === address.id))
+      closeAddressSuggestions()
       return undefined
     }
+    if (action === 'pick-address') {
+      const input = ui.querySelector('#checkoutForm [name="address"]')
+      const place = addressSuggestionCache[Number(actionBtn.dataset.index)]
+      if (input && place) applyAddressSuggestion(input, place)
+      closeAddressSuggestions()
+      input?.focus()
+      return undefined
+    }
+    if (action === 'locate-address') return locateDeliveryAddress()
     if (action === 'confirm-received') {
       const result = db.confirmOrderReceived(actionBtn.dataset.code, auth.getUser()?.id ?? null)
       if (result.error) return toast(result.error, 'err')
@@ -1473,6 +1759,8 @@ document.addEventListener('click', async (event) => {
     if (action === 'reset-filter') return resetFilter()
     if (action === 'cancel-order') return askCancelOrder(actionBtn.dataset.code)
     if (action === 'cancel-order-confirm') return cancelOrder(actionBtn.dataset.code)
+    if (action === 'request-return') return askReturnOrder(actionBtn.dataset.code)
+    if (action === 'request-return-confirm') return requestReturn(actionBtn.dataset.code)
     if (action === 'review-pick') return paintStars(Number(actionBtn.dataset.star))
     if (action === 'review-save') return submitReview(actionBtn.dataset.code)
     if (action === 'review-new') {
@@ -1519,6 +1807,11 @@ const afterLogin = (user) => {
   const landing = auth.landingFor(user)
   if (landing) window.location.href = landing
 }
+
+ui.addEventListener('input', (event) => {
+  if (event.target?.name !== 'address') return
+  renderAddressSuggestions(findAddressSuggestions(event.target.value))
+})
 
 ui.addEventListener('change', async (event) => {
   if (event.target.name === 'paymentMethod') {

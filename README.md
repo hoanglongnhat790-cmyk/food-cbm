@@ -53,6 +53,13 @@ Tài khoản quản trị được tạo tự động khi app chạy lần đầ
 - Đặt món kiểu app food: chọn giao tận nơi/tự đến lấy, phương thức thanh toán, voucher và màn xác nhận đơn chi tiết
 - Theo dõi đơn với timeline: chờ xác nhận → đã xác nhận → đang giao → hoàn thành
 - Đăng ký / đăng nhập / xem tài khoản / đăng xuất
+- Trợ lý AI ở nút nổi **Không biết ăn gì? Hỏi AI**: chat gợi ý món ngay trên
+  trang, trả lời theo danh mục, ngân sách ("dưới 50k"), vị ("món cay"),
+  thời điểm ("đồ uống", "ăn sáng") và cả tên món không dấu ("phe bo"),
+  kèm nút *Thêm vào giỏ* và *Đưa vào vòng quay*
+- Vòng quay may mắn: khách tự chọn các món mình thích (hoặc chọn nhanh
+  Bán chạy / Dưới 50k / Tất cả), bấm QUAY và để máy chọn ngẫu nhiên một món,
+  kết quả có nút thêm thẳng vào giỏ
 
 **Quản trị**
 
@@ -81,7 +88,8 @@ Tài khoản quản trị được tạo tự động khi app chạy lần đầ
 npm test
 ```
 
-109 test cho món ăn, giỏ hàng, đặt hàng, thanh toán, xác thực và tìm kiếm.
+238 test cho món ăn, giỏ hàng, đặt hàng, thanh toán, xác thực, tìm kiếm và
+logic gợi ý của trợ lý AI.
 Test chạy bằng `node --test` của Node, không cần framework.
 
 ```bash
@@ -104,6 +112,9 @@ src/
   cart.js             giỏ hàng
   auth.js             đăng nhập, phân quyền
   search.js           logic tìm kiếm
+  suggest.js          logic gợi ý món của trợ lý AI (thuần hàm, có test)
+  assistant.js        khung chat nổi + vòng quay may mắn
+  assistant.css       CSS cho trợ lý AI
   style.css           CSS cửa hàng
   admin.css           CSS quản trị
   data/foods.json     dữ liệu mẫu ban đầu

@@ -336,7 +336,27 @@ const loadDishes = () => {
     write(DISH_KEY, seeded)
     return seeded
   }
-  return stored.map((d, i) => normalizeDish(d, i)).filter(Boolean)
+  /* Đồng bộ ảnh: nếu món đã lưu chưa có ảnh (image rỗng) nhưng dữ liệu gốc
+     (foods.json) bây giờ đã có URL ảnh thực, tự động merge ảnh mới vào. */
+  const seedMap = new Map(rawFoods.dishes.map((item) => [
+    `${CODE_PREFIX}${String(item.id).padStart(3, '0')}`,
+    normalizeImage(item.image),
+  ]))
+  let dirty = false
+  const merged = stored.map((d, i) => {
+    const dish = normalizeDish(d, i)
+    if (!dish) return null
+    if (seedMap.has(dish.code) && seedMap.get(dish.code)) {
+      const seedImg = seedMap.get(dish.code)
+      if (!dish.image || (!dish.image.startsWith('data:') && dish.image !== seedImg)) {
+        dish.image = seedImg
+        dirty = true
+      }
+    }
+    return dish
+  }).filter(Boolean)
+  if (dirty) write(DISH_KEY, merged)
+  return merged
 }
 
 /**

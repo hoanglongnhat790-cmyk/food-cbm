@@ -182,7 +182,7 @@ function renderCart() {
   body.innerHTML = state.cart.map(item => `
     <div class="cart-item" data-id="${item.dish.id}">
       <div class="cart-item-art" style="background:${CATEGORY_GRADIENTS[item.dish.category] || '#ccc'}">
-        ${CATEGORY_ICONS[item.dish.category] ? '' : '🍽️'}
+        ${item.dish.image ? `<img src="${item.dish.image}" alt="${item.dish.name}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" />` : (CATEGORY_ICONS[item.dish.category] ? '' : '🍽️')}
       </div>
       <div class="cart-item-info">
         <p class="cart-item-name">${item.dish.name}</p>
@@ -249,7 +249,7 @@ function createDishCard(dish) {
 
   article.innerHTML = `
     <div class="dish-art" style="background:${gradient}">
-      ${icon}
+      ${dish.image ? `<img src="${dish.image}" alt="${dish.name}" class="dish-art-img" loading="lazy" />` : icon}
       ${badgeHTML}
       ${statusBadge}
     </div>

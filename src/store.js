@@ -232,6 +232,55 @@ const normalizeVoucher = (raw) => {
   }
 }
 
+const seedVoucher = (p) => {
+  if (!p || typeof p !== 'object') return null
+  const code = normalizeCode(p.code)
+  if (!code) return null
+  const type = Object.keys(VOUCHER_TYPES).includes(p.discountType)
+    ? p.discountType
+    : Object.keys(VOUCHER_TYPES).includes(p.type)
+      ? p.type
+      : 'percent'
+  const expiresAt = p.expiryDate ? Date.parse(p.expiryDate) : num(p.expiresAt, 0)
+  return normalizeVoucher({
+    id: str(p.id) || code,
+    code,
+    type,
+    value: num(p.discount ?? p.value),
+    minOrder: num(p.minOrder),
+    maxDiscount: num(p.maxDiscount),
+    startsAt: num(p.startsAt, 0),
+    expiresAt: Number.isNaN(expiresAt) ? 0 : expiresAt,
+    usageLimit: num(p.usageLimit, 0),
+    usedCount: num(p.usedCount, 0),
+    perUserLimit: num(p.perUserLimit, 0),
+    active: p.isActive !== false && p.active !== false,
+    createdAt: Date.now(),
+  })
+}
+
+const loadVouchers = () => {
+  const defaultVouchers = Array.isArray(rawFoods.promotions)
+    ? rawFoods.promotions.map(seedVoucher).filter(Boolean)
+    : []
+  const stored = read(VOUCHER_KEY, null)
+  if (!Array.isArray(stored)) {
+    write(VOUCHER_KEY, defaultVouchers)
+    return defaultVouchers
+  }
+  const current = stored.map(normalizeVoucher).filter(Boolean)
+  const existingCodes = new Set(current.map((v) => v.code))
+  let dirty = false
+  for (const dv of defaultVouchers) {
+    if (!existingCodes.has(dv.code)) {
+      current.push(dv)
+      dirty = true
+    }
+  }
+  if (dirty) write(VOUCHER_KEY, current)
+  return current
+}
+
 /**
  * Chuẩn hoá một bản đánh giá đọc từ kho, bỏ bản ghi hỏng.
  *
@@ -307,6 +356,7 @@ const seedDish = (item, index) => ({
   name: str(item.name, 'Món ăn'),
   description: str(item.description),
   category: str(item.category, CATEGORIES[0].id),
+  vendorId: str(item.vendorId) || defaultVendorForCategory(str(item.category, CATEGORIES[0].id)),
   price: num(item.price),
   originalPrice: num(item.originalPrice) > num(item.price) ? num(item.originalPrice) : null,
   rating: Number(item.rating) || 0,
@@ -416,7 +466,7 @@ export const normalizeDish = (input, index = 0) => {
 let dishes = loadDishes()
 let orders = read(ORDER_KEY, []).filter((o) => o && typeof o === 'object')
 let reviews = read(REVIEW_KEY, []).map(normalizeReview).filter(Boolean)
-let vouchers = read(VOUCHER_KEY, []).map(normalizeVoucher).filter(Boolean)
+let vouchers = loadVouchers()
 let seq = num(read(SALE_KEY, rawFoods.dishes.length))
 /* Date.now() trùng nhau khi khách đặt nhiều đơn trong cùng 1 mili-giây,
    nên id đơn cần thêm số thứ tự để luôn khác nhau. */
@@ -440,7 +490,7 @@ export const reloadFromStorage = () => {
   dishes = loadDishes()
   orders = read(ORDER_KEY, []).filter((o) => o && typeof o === 'object')
   reviews = read(REVIEW_KEY, []).map(normalizeReview).filter(Boolean)
-  vouchers = read(VOUCHER_KEY, []).map(normalizeVoucher).filter(Boolean)
+  vouchers = loadVouchers()
   seq = num(read(SALE_KEY, rawFoods.dishes.length))
   orderSeq = num(read(ORDER_SEQ_KEY, 0))
 }
@@ -551,7 +601,9 @@ export const resetDishes = () => {
   /* Đánh giá trỏ tới mã môn/đơn cũ nên phải xoá luôn, nếu không mảng này vẫn
      giữ trong bộ nhớ và làm điểm của món cũ rò sang lần nạp sau. */
   reviews = []
-  vouchers = []
+  vouchers = Array.isArray(rawFoods.promotions)
+    ? rawFoods.promotions.map(seedVoucher).filter(Boolean)
+    : []
   orderSeq = 0
   persistDishes()
   persistOrders()
@@ -1453,3 +1505,5 @@ export const menuByCategory = () =>
   }))
 
 export const promotions = () => rawFoods.promotions ?? []
+
+export const restaurantInfo = () => ({ ...rawFoods.restaurant })

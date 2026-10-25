@@ -139,7 +139,8 @@ test('ma thuong khong trung nhau sau nhieu lan nhan', async () => {
     codes.add(result.code)
   }
   assert.equal(codes.size, 4, '4 lan nhan ra 4 ma khac nhau')
-  assert.equal(store.listVouchers().length, 4)
+  /* foods.json co san voucher khuyen mai, chi dem them 4 ma game vua tao. */
+  assert.equal(store.listVouchers().length, store.promotions().length + 4)
 })
 
 test('khong trung (type null) thi bao loi va khong tru luot ngay', async () => {
@@ -147,7 +148,7 @@ test('khong trung (type null) thi bao loi va khong tru luot ngay', async () => {
   const before = games.gameClaimsLeft()
   const result = games.claimGameReward(games.REWARD_POOL.scratch.find((r) => !r.type))
   assert.ok(result.error)
-  assert.equal(store.listVouchers().length, 0, 'khong tao voucher nao')
+  assert.equal(store.listVouchers().length, store.promotions().length, 'khong tao voucher nao')
   assert.equal(games.gameClaimsLeft(), before, 'khong tru luot nhan qua')
 })
 
@@ -167,7 +168,7 @@ test('gioi han 5 qua moi ngay: qua luot thi loi, sang ngay moi nhan lai', async 
   assert.equal(games.gameClaimsLeft(now), 0)
   const denied = games.claimGameReward(games.REWARD_POOL.memory[0], { now })
   assert.ok(denied.error, 'lan thu 6 phai loi')
-  assert.equal(store.listVouchers().length, 5)
+  assert.equal(store.listVouchers().length, store.promotions().length + 5)
 
   /* Sang hôm sau thì hạn mức mới. */
   const tomorrow = now + DAY

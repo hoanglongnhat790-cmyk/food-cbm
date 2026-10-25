@@ -223,7 +223,7 @@ const normalizeVoucher = (raw) => {
     /* Không nhập hạn = dùng mãi; nhập hạn cũ hơn lúc bắt đầu là lỗi cấu hình
        nên đổi thành không hạn thay vì tạo mã chết ngay. */
     expiresAt: expiresAt && expiresAt < startsAt ? 0 : expiresAt,
-    usageLimit: num(raw.usageLimit),
+    usageLimit: num(raw.usageLimit ?? raw.maxUses),
     usedCount: num(raw.usedCount),
     perUserLimit: num(raw.perUserLimit),
     usedBy: { ...(raw.usedBy && typeof raw.usedBy === 'object' ? raw.usedBy : {}) },
@@ -1493,8 +1493,10 @@ export const stats = () => {
     soldOutCount: dishes.filter(isSoldOut).length,
     lowStock: lowStock.map((d) => ({ code: d.code, name: d.name, stock: d.stock })),
     voucherCount: vouchers.length,
-    /* Đang dùng được = còn bật, còn hạn và chưa hết lượt. */
-    voucherLiveCount: vouchers.filter((v) => voucherIsLive(v)).length,
+    /* Đang dùng được = còn bật, còn hạn và chưa hết lượt.
+       `voucherIsLive` trả về chuỗi lỗi khi KHÔNG dùng được và null khi còn
+       dùng được, nên phải phủ định kết quả. */
+    voucherLiveCount: vouchers.filter((v) => !voucherIsLive(v)).length,
   }
 }
 

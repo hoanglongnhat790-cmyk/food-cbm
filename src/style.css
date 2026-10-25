@@ -3475,7 +3475,26 @@ body.modal-open {
 }
 .game-tab:hover { border-color: var(--brand); transform: translateY(-2px); }
 .game-tab.is-active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark); }
+.game-tab.is-disabled,
+.game-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  border-color: var(--border);
+  background: #f4efeb;
+  color: #8a7f77;
+}
 .game-stage { min-height: 260px; }
+.game-offline {
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 38px 22px;
+}
+.game-offline-icon { font-size: 42px; }
+.game-offline h3 { margin: 0; font-size: 20px; }
+.game-offline p { margin: 0; color: #6f665f; max-width: 520px; }
 .game-panel {
   background: #fff;
   border: 1px solid #f0e4db;

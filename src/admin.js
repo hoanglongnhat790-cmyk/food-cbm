@@ -1,6 +1,7 @@
 import './admin.css'
 import * as db from './store.js'
 import * as auth from './auth.js'
+import * as gameConfig from './game-config.js'
 import { matchesQuery, normalizeQuery } from './search.js'
 
 const $ = (sel) => document.querySelector(sel)
@@ -48,6 +49,8 @@ const el = {
   voucherList: $('#voucher-list'),
   voucherSummary: $('#voucher-summary'),
   voucherSearch: $('#voucher-search'),
+  gameAdminBody: $('#game-admin-body'),
+  gameAdminSummary: $('#game-admin-summary'),
   modalRoot: $('#modal-root'),
   toastRoot: $('#toast-root'),
 }
@@ -57,6 +60,7 @@ const PAGES = {
   dishes: { title: 'Món ăn', sub: 'Thêm, sửa, xoá món trong thực đơn.' },
   orders: { title: 'Đơn hàng', sub: 'Theo dõi và cập nhật trạng thái đơn.' },
   vouchers: { title: 'Voucher', sub: 'Mã giảm giá cho khách.' },
+  games: { title: 'Quản lý Mini Game', sub: 'Bật/tắt game, cấu hình phần thưởng, câu hỏi và theo dõi lịch sử thật.' },
   ship: { title: 'Điều phối ship', sub: 'Theo dõi đơn đang giao và chuyển trạng thái giao hàng.' },
 }
 
@@ -67,8 +71,15 @@ const state = {
   orderQuery: '',
   orderStatus: 'all',
   voucherQuery: '',
+  gameTab: 'overview',
+  gameRewardGame: 'all',
+  gameHistoryQuery: '',
+  gameHistoryStatus: 'all',
+  gameHistoryGame: 'all',
   editing: null,
   editingVoucher: null,
+  editingGameReward: null,
+  editingGameQuestion: null,
   emoji: '',
   imagePreviewUrl: '',
 }
@@ -456,6 +467,7 @@ const render = () => {
   if (page === 'orders') renderOrders()
   if (page === 'ship') renderShip()
   if (page === 'vouchers') renderVouchers()
+  if (page === 'games') renderGamesAdmin()
 }
 
 /* ---------------- voucher ---------------- */
@@ -535,13 +547,596 @@ const renderVouchers = () => {
     : '<p class="muted">Không có voucher nào khớp bộ lọc.</p>'
 }
 
-/* ---------------- modal ---------------- */
+/* ---------------- mini game admin ---------------- */
+
+const GAME_ADMIN_TABS = [
+  { id: 'overview', label: 'Tổng quan' },
+  { id: 'config', label: 'Cấu hình' },
+  { id: 'rewards', label: 'Phần thưởng' },
+  { id: 'questions', label: 'Câu hỏi' },
+  { id: 'history', label: 'Lịch sử' },
+]
+
+const gameTypeText = (type) => gameConfig.REWARD_TYPE_LABELS[type ?? 'none'] ?? 'Không trúng thưởng'
+
+const gameTierText = (reward) => {
+  if (reward.game === 'memory') return gameConfig.TIER_LABELS.memory[reward.tier] ?? `Bậc ${reward.tier}`
+  if (reward.game === 'quiz') return gameConfig.TIER_LABELS.quiz[reward.tier] ?? reward.tier
+  return 'Mọi lượt'
+}
+
+const gameBadge = (game) =>
+  `<span class="game-pill">${gameConfig.GAME_ICONS[game] ?? '🎮'} ${escape(gameConfig.GAME_LABELS[game] ?? game)}</span>`
+
+const gameHistoryStatusOptions = () => [
+  { id: 'all', label: 'Tất cả trạng thái' },
+  ...Object.entries(gameConfig.VOUCHER_STATUS_META).map(([id, meta]) => ({ id, label: meta.label })),
+]
+
+const renderGameOverview = () => {
+  const config = gameConfig.getGameConfig()
+  const stats = gameConfig.gameStats()
+  const statCards = [
+    { label: 'Lượt chơi đã ghi nhận', value: stats.plays },
+    { label: 'Lượt nhận thưởng', value: stats.claims },
+    { label: 'Tổng voucher đã phát', value: stats.vouchersIssued },
+    { label: 'Voucher còn hạn', value: stats.live },
+    { label: 'Voucher đã sử dụng', value: stats.used },
+    { label: 'Voucher hết hạn', value: stats.expired },
+    { label: 'Nhận thưởng hôm nay', value: stats.todayClaims },
+    { label: 'Tỉ lệ nhận thưởng / lượt chơi', value: `${Math.round(stats.winRate * 100)}%` },
+  ]
+
+  const gameCards = gameConfig.GAME_IDS.map((id) => {
+    const rules = config.games[id]
+    const byGame = stats.byGame[id] ?? { claims: 0, live: 0, used: 0, expired: 0 }
+    const rewards = gameConfig.listRewards(id)
+    const activeRewards = rewards.filter((reward) => reward.active).length
+    const ruleText =
+      id === 'scratch'
+        ? `Ngưỡng cào ${rules.threshold}%`
+        : id === 'memory'
+          ? `${rules.pairs} cặp thẻ mỗi bàn`
+          : `${rules.questionCount} câu/lượt · ${config.quizQuestions.length} câu trong bank`
+    return `
+      <article class="game-admin-card${rules.enabled ? '' : ' is-off'}">
+        <div class="game-admin-card-top">
+          <span class="game-admin-icon">${gameConfig.GAME_ICONS[id]}</span>
+          <div>
+            <h3>${escape(gameConfig.GAME_LABELS[id])}</h3>
+            <small>${escape(ruleText)}</small>
+          </div>
+          <span class="badge ${rules.enabled ? 'is-ok' : 'is-off'}">${rules.enabled ? 'Đang bật' : 'Đang tắt'}</span>
+        </div>
+        <div class="game-admin-facts">
+          <span>Phần thưởng: <b>${activeRewards}/${rewards.length} đang bật</b></span>
+          <span>Voucher phát ra: <b>${byGame.claims}</b></span>
+          <span>Còn hạn: <b>${byGame.live}</b> · Đã dùng: <b>${byGame.used}</b> · Hết hạn: <b>${byGame.expired}</b></span>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn btn-sm ${rules.enabled ? 'btn-ghost' : 'btn-primary'}"
+            data-action="game-toggle" data-game="${id}" data-enabled="${rules.enabled ? '1' : '0'}">
+            ${rules.enabled ? 'Tắt game' : 'Bật game'}
+          </button>
+          <button type="button" class="btn btn-sm btn-ghost" data-action="game-admin-tab" data-tab="config">Sửa cấu hình</button>
+        </div>
+      </article>`
+  }).join('')
+
+  return `
+    <section class="panel game-global-panel">
+      <header class="panel-head">
+        <div>
+          <h2>Trạng thái toàn bộ mini game</h2>
+          <small class="muted">Tắt toàn bộ sẽ chặn khách bắt đầu mọi game, kể cả game đang bật riêng.</small>
+        </div>
+        <span class="badge ${config.enabled ? 'is-ok' : 'is-off'}">${config.enabled ? 'Đang bật' : 'Đang tắt'}</span>
+      </header>
+      <div class="panel-body game-global-body">
+        <div class="game-global-note">
+          <b>${config.enabled ? 'Khách có thể chơi các game đang bật.' : 'Khách đang thấy thông báo mini game tạm đóng.'}</b>
+          <small>${config.claimLimitPerDay} lượt nhận thưởng/ngày · voucher có hạn ${config.voucherTtlDays} ngày.</small>
+        </div>
+        <button type="button" class="btn ${config.enabled ? 'btn-ghost' : 'btn-primary'}"
+          data-action="game-global-toggle" data-enabled="${config.enabled ? '1' : '0'}">
+          ${config.enabled ? 'Tắt toàn bộ game' : 'Bật toàn bộ game'}
+        </button>
+      </div>
+    </section>
+
+    <div class="stat-grid">
+      ${statCards.map((card) => `
+        <article class="stat">
+          <small>${escape(card.label)}</small>
+          <strong>${escape(card.value)}</strong>
+        </article>`).join('')}
+    </div>
+
+    <div class="game-admin-grid">${gameCards}</div>
+
+    <section class="panel">
+      <div class="panel-body">
+        <p class="game-storage-note"><b>💾 Nơi lưu dữ liệu:</b> cấu hình <code>cbmfood.gameConfig</code>, lịch sử <code>cbmfood.gameRewards</code>, lượt chơi <code>cbmfood.gamePlays</code>.
+        Dữ liệu nằm trong localStorage của từng trình duyệt. Hai tab cùng trình duyệt đồng bộ qua sự kiện <code>storage</code>;
+        khác trình duyệt/máy hoặc chế độ ẩn danh sẽ có cấu hình và lịch sử riêng — cần backend để đồng bộ nhiều máy.</p>
+      </div>
+    </section>`
+}
+
+const renderGameConfigTab = () => {
+  const config = gameConfig.getGameConfig()
+  return `
+    <form id="game-config-form" class="game-config-form" novalidate>
+      <section class="panel">
+        <header class="panel-head"><h2>Cấu hình chung</h2></header>
+        <div class="form-grid">
+          <label class="field">
+            <span>Trạng thái toàn bộ game *</span>
+            <select name="enabled">
+              <option value="1" ${config.enabled ? 'selected' : ''}>Đang bật</option>
+              <option value="0" ${config.enabled ? '' : 'selected'}>Tạm tắt toàn bộ</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Số lượt nhận thưởng mỗi ngày *</span>
+            <input name="claimLimitPerDay" type="number" min="0" max="100" step="1" value="${config.claimLimitPerDay}" required />
+            <small class="field-hint">0 = tạm không cho nhận thưởng; mặc định 5.</small>
+          </label>
+          <label class="field">
+            <span>Hạn sử dụng voucher (ngày) *</span>
+            <input name="voucherTtlDays" type="number" min="1" max="365" step="1" value="${config.voucherTtlDays}" required />
+            <small class="field-hint">Tính từ lúc khách nhận thưởng.</small>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <header class="panel-head"><h2>Quy tắc từng game</h2></header>
+        <div class="form-grid">
+          <label class="field">
+            <span>🃏 Cào thẻ may mắn</span>
+            <select name="scratchEnabled">
+              <option value="1" ${config.games.scratch.enabled ? 'selected' : ''}>Đang bật</option>
+              <option value="0" ${config.games.scratch.enabled ? '' : 'selected'}>Tạm tắt</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Ngưỡng cào để mở thưởng (%) *</span>
+            <input name="scratchThreshold" type="number" min="5" max="100" step="1" value="${config.games.scratch.threshold}" required />
+            <small class="field-hint">Cào đủ tỉ lệ này mới lộ quà.</small>
+          </label>
+          <label class="field">
+            <span>🔄 Lật thẻ tìm cặp</span>
+            <select name="memoryEnabled">
+              <option value="1" ${config.games.memory.enabled ? 'selected' : ''}>Đang bật</option>
+              <option value="0" ${config.games.memory.enabled ? '' : 'selected'}>Tạm tắt</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Số cặp thẻ mỗi bàn *</span>
+            <input name="memoryPairs" type="number" min="2" max="12" step="1" value="${config.games.memory.pairs}" required />
+            <small class="field-hint">Cần thực đơn có ít nhất số cặp này.</small>
+          </label>
+          <label class="field">
+            <span>🧠 Đố vui ẩm thực</span>
+            <select name="quizEnabled">
+              <option value="1" ${config.games.quiz.enabled ? 'selected' : ''}>Đang bật</option>
+              <option value="0" ${config.games.quiz.enabled ? '' : 'selected'}>Tạm tắt</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Số câu hỏi mỗi lượt *</span>
+            <input name="quizQuestionCount" type="number" min="1" max="50" step="1" value="${config.games.quiz.questionCount}" required />
+            <small class="field-hint">Bank hiện có ${config.quizQuestions.length} câu; nếu đặt nhiều hơn sẽ dùng hết số câu hiện có.</small>
+          </label>
+        </div>
+      </section>
+
+      <div class="game-form-actions">
+        <button type="submit" class="btn btn-primary">Lưu cấu hình</button>
+      </div>
+    </form>`
+}
+
+const renderGameRewardsTab = () => {
+  const rewards = gameConfig.listRewards(state.gameRewardGame === 'all' ? null : state.gameRewardGame)
+  const config = gameConfig.getGameConfig()
+  return `
+    <header class="view-head game-tab-head">
+      <div>
+        <h2>Danh sách phần thưởng</h2>
+        <p class="muted">${rewards.length} phần thưởng · ${rewards.filter((reward) => reward.active).length} đang bật. Phần thưởng tắt sẽ không được bốc.</p>
+      </div>
+      <button type="button" class="btn btn-primary" data-action="game-reward-new">+ Thêm phần thưởng</button>
+    </header>
+    <div class="chip-row">
+      ${[{ id: 'all', label: 'Tất cả game' }, ...gameConfig.GAME_IDS.map((id) => ({ id, label: gameConfig.GAME_LABELS[id] }))]
+        .map((item) => `<button type="button" class="chip ${state.gameRewardGame === item.id ? 'is-active' : ''}"
+          data-action="game-reward-filter" data-game="${item.id}">${escape(item.label)}</button>`).join('')}
+    </div>
+    <div class="game-reward-list">
+      ${rewards.length ? rewards.map((reward) => `
+        <article class="game-reward-row${reward.active ? '' : ' is-off'}">
+          <div class="game-reward-main">
+            <strong>${escape(reward.label)}</strong>
+            ${gameBadge(reward.game)}
+            <span class="badge is-info">${escape(gameTierText(reward))}</span>
+            <span class="badge ${reward.active ? 'is-ok' : 'is-off'}">${reward.active ? 'Đang bật' : 'Đang tắt'}</span>
+          </div>
+          <div class="game-reward-facts">
+            <span>Loại: <b>${escape(gameTypeText(reward.type))}</b></span>
+            ${reward.type === 'percent' ? `<span>Giá trị: <b>${reward.value}%</b></span>` : ''}
+            ${reward.type === 'fixed' ? `<span>Giá trị: <b>${money(reward.value)}</b></span>` : ''}
+            <span>Trọng số: <b>${reward.weight}</b></span>
+            ${reward.minOrder ? `<span>Đơn tối thiểu: <b>${money(reward.minOrder)}</b></span>` : ''}
+            ${reward.maxDiscount ? `<span>Giảm tối đa: <b>${money(reward.maxDiscount)}</b></span>` : ''}
+            <span>Tỉ lệ ước tính: <b>${(() => {
+              const pool = gameConfig.listRewards(reward.game, { includeInactive: false })
+              const total = pool.reduce((sum, item) => sum + item.weight, 0)
+              return total > 0 ? `${Math.round((reward.weight / total) * 100)}%` : '—'
+            })()}</b></span>
+          </div>
+          <div class="row-actions">
+            <button type="button" class="btn btn-sm btn-ghost" data-action="game-reward-toggle"
+              data-id="${escape(reward.id)}" data-active="${reward.active ? '1' : '0'}">${reward.active ? 'Tắt' : 'Bật'}</button>
+            <button type="button" class="icon-btn" data-action="game-reward-edit" data-id="${escape(reward.id)}" title="Sửa">✎</button>
+            <button type="button" class="icon-btn is-danger" data-action="game-reward-delete" data-id="${escape(reward.id)}" title="Xoá">🗑</button>
+          </div>
+        </article>`).join('') : '<p class="muted">Chưa có phần thưởng nào. Bấm “Thêm phần thưởng” để tạo.</p>'}
+    </div>
+    <p class="game-storage-note"><b>Tổng quan cấu hình:</b> ${config.claimLimitPerDay} lượt/ngày, voucher hạn ${config.voucherTtlDays} ngày. Phần thưởng “Không trúng thưởng” vẫn có trọng số để giữ tỉ lệ hợp lý.</p>`
+}
+
+const renderGameQuestionsTab = () => {
+  const questions = gameConfig.listQuizQuestions()
+  const config = gameConfig.getGameConfig()
+  return `
+    <header class="view-head game-tab-head">
+      <div>
+        <h2>Bank câu hỏi đố vui</h2>
+        <p class="muted">${questions.length} câu · mỗi lượt dùng ${config.games.quiz.questionCount} câu ngẫu nhiên.</p>
+      </div>
+      <button type="button" class="btn btn-primary" data-action="game-question-new">+ Thêm câu hỏi</button>
+    </header>
+    <div class="game-question-list">
+      ${questions.length ? questions.map((question, index) => `
+        <article class="game-question-card">
+          <div class="game-question-head">
+            <span class="game-question-index">Câu ${index + 1}</span>
+            <p>${escape(question.prompt)}</p>
+            <div class="row-actions">
+              <button type="button" class="icon-btn" data-action="game-question-edit" data-id="${escape(question.id)}" title="Sửa">✎</button>
+              <button type="button" class="icon-btn is-danger" data-action="game-question-delete" data-id="${escape(question.id)}" title="Xoá">🗑</button>
+            </div>
+          </div>
+          <ul class="game-question-options">
+            ${question.options.map((option, i) => `<li class="${i === question.answer ? 'is-correct' : ''}">${i === question.answer ? '✓' : '·'} ${escape(option)}</li>`).join('')}
+          </ul>
+        </article>`).join('') : '<p class="muted">Bank đang trống. Hãy thêm câu hỏi để khách có thể chơi đố vui.</p>'}
+    </div>
+    <p class="game-storage-note">Câu hỏi lưu cùng cấu hình <code>cbmfood.gameConfig</code>. Không cho lưu câu thiếu nội dung, ít hơn 2 đáp án, đáp án trùng hoặc chưa chọn đáp án đúng.</p>`
+}
+
+const renderGameHistoryResults = () => {
+  const holder = el.gameAdminBody?.querySelector('#game-history-results')
+  if (!holder) return
+  holder.innerHTML = renderGameHistoryResultsHtml()
+}
+
+const renderGameHistoryTab = () => {
+  const stats = gameConfig.gameStats()
+  return `
+    <div class="stat-grid">
+      ${[
+        { label: 'Lượt nhận thưởng', value: stats.claims },
+        { label: 'Tổng voucher đã phát', value: stats.vouchersIssued },
+        { label: 'Còn hạn', value: stats.live },
+        { label: 'Đã sử dụng', value: stats.used },
+        { label: 'Hết hạn', value: stats.expired },
+        { label: 'Đã tắt / đã xoá', value: stats.inactive + stats.deleted },
+      ].map((card) => `<article class="stat"><small>${escape(card.label)}</small><strong>${card.value}</strong></article>`).join('')}
+    </div>
+    <div class="toolbar">
+      <input type="search" id="game-history-search" value="${escape(state.gameHistoryQuery)}"
+        placeholder="Tìm theo mã voucher, tên phần thưởng..." autocomplete="off" />
+      <select id="game-history-status" aria-label="Trạng thái voucher">
+        ${gameHistoryStatusOptions().map((option) => `<option value="${escape(option.id)}" ${state.gameHistoryStatus === option.id ? 'selected' : ''}>${escape(option.label)}</option>`).join('')}
+      </select>
+      <select id="game-history-game" aria-label="Game">
+        <option value="all">Tất cả game</option>
+        ${[...gameConfig.GAME_IDS, 'unknown'].map((id) => `<option value="${id}" ${state.gameHistoryGame === id ? 'selected' : ''}>${escape(gameConfig.GAME_LABELS[id])}</option>`).join('')}
+      </select>
+    </div>
+    <div id="game-history-results">${renderGameHistoryResultsHtml()}</div>
+    <p class="game-storage-note">Lịch sử đọc trực tiếp từ <code>cbmfood.gameRewards</code>; trạng thái voucher lấy từ kho voucher thật nên phản ánh đúng mã còn hạn, đã dùng, hết hạn hoặc đã bị xoá.</p>`
+}
+
+const renderGameHistoryResultsHtml = () => {
+  const records = gameConfig.listGameHistory({
+    query: state.gameHistoryQuery,
+    status: state.gameHistoryStatus,
+    game: state.gameHistoryGame,
+  })
+  if (!records.length) return '<p class="muted">Không có lịch sử nào khớp bộ lọc.</p>'
+  return `<div class="game-history-table-wrap">
+    <table class="game-history-table">
+      <thead><tr><th>Mã voucher</th><th>Game</th><th>Phần thưởng</th><th>Thời gian nhận</th><th>Trạng thái</th></tr></thead>
+      <tbody>
+        ${records.map((record) => `
+          <tr>
+            <td><code>${escape(record.code)}</code></td>
+            <td>${escape(record.gameLabel)}</td>
+            <td>${escape(record.label)}</td>
+            <td>${new Date(Number(record.at) || 0).toLocaleString('vi-VN')}</td>
+            <td><span class="badge is-${escape(record.statusTone)}">${escape(record.statusLabel)}</span></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`
+}
+
+const renderGamesAdmin = () => {
+  if (!el.gameAdminBody) return
+  const stats = gameConfig.gameStats()
+  const config = gameConfig.getGameConfig()
+  if (el.gameAdminSummary) {
+    el.gameAdminSummary.textContent = `${stats.plays} lượt chơi · ${stats.claims} lượt nhận thưởng · ${stats.live} voucher còn hạn · ${config.enabled ? 'game đang bật' : 'game đang tắt'}`
+  }
+  document.querySelectorAll('.game-admin-tab').forEach((tab) => {
+    const active = tab.dataset.tab === state.gameTab
+    tab.classList.toggle('is-active', active)
+    tab.setAttribute('aria-selected', active ? 'true' : 'false')
+  })
+  if (state.gameTab === 'overview') el.gameAdminBody.innerHTML = renderGameOverview()
+  else if (state.gameTab === 'config') el.gameAdminBody.innerHTML = renderGameConfigTab()
+  else if (state.gameTab === 'rewards') el.gameAdminBody.innerHTML = renderGameRewardsTab()
+  else if (state.gameTab === 'questions') el.gameAdminBody.innerHTML = renderGameQuestionsTab()
+  else el.gameAdminBody.innerHTML = renderGameHistoryTab()
+}
+
+const rewardTierOptions = (game, selected = '') => {
+  if (game === 'memory') {
+    return ['3', '2', '1'].map((tier) =>
+      `<option value="${tier}" ${String(selected) === tier ? 'selected' : ''}>${gameConfig.TIER_LABELS.memory[tier]}</option>`).join('')
+  }
+  if (game === 'quiz') {
+    return ['perfect', 'good', 'pass'].map((tier) =>
+      `<option value="${tier}" ${String(selected) === tier ? 'selected' : ''}>${gameConfig.TIER_LABELS.quiz[tier]}</option>`).join('')
+  }
+  return '<option value="">Mọi lượt chơi</option>'
+}
+
+const gameRewardForm = (reward) => {
+  const game = reward?.game ?? 'scratch'
+  return `
+    <form id="game-reward-form" novalidate>
+      <div class="form-grid">
+        <label class="field">
+          <span>Game áp dụng *</span>
+          <select name="game" data-role="reward-game">
+            ${gameConfig.GAME_IDS.map((id) => `<option value="${id}" ${game === id ? 'selected' : ''}>${escape(gameConfig.GAME_LABELS[id])}</option>`).join('')}
+          </select>
+        </label>
+        <label class="field">
+          <span>Bậc áp dụng *</span>
+          <select name="tier" data-role="reward-tier">${rewardTierOptions(game, reward?.tier)}</select>
+          <small class="field-hint">Cào thẻ dùng mọi lượt; lật thẻ theo sao; đố vui theo mức điểm.</small>
+        </label>
+        <label class="field">
+          <span>Loại phần thưởng *</span>
+          <select name="type" data-role="reward-type">
+            ${Object.entries(gameConfig.REWARD_TYPE_LABELS).map(([id, label]) => {
+              const value = id === 'none' ? 'none' : id
+              return `<option value="${value}" ${(reward?.type ?? 'none') === value ? 'selected' : ''}>${escape(label)}</option>`
+            }).join('')}
+          </select>
+        </label>
+        <label class="field">
+          <span>Tên phần thưởng *</span>
+          <input name="label" value="${escape(reward?.label ?? '')}" maxlength="80" placeholder="VD: Giảm 10%" required />
+        </label>
+        <label class="field">
+          <span>Giá trị quà</span>
+          <input name="value" type="number" min="0" step="1000" value="${escape(reward?.type && reward.type !== 'freeship' ? reward.value : '')}" placeholder="Ví dụ 10 hoặc 20000" />
+          <small class="field-hint" data-role="reward-value-hint">Giảm % nhập 1–100; giảm tiền nhập số tiền; miễn phí ship/không trúng bỏ trống.</small>
+        </label>
+        <label class="field">
+          <span>Trọng số trúng thưởng *</span>
+          <input name="weight" type="number" min="1" step="1" value="${escape(reward?.weight ?? 10)}" required />
+          <small class="field-hint">Càng lớn càng dễ trúng.</small>
+        </label>
+        <label class="field">
+          <span>Đơn hàng tối thiểu (đ)</span>
+          <input name="minOrder" type="number" min="0" step="1000" value="${escape(reward?.minOrder ?? '')}" placeholder="Không yêu cầu" />
+        </label>
+        <label class="field">
+          <span>Mức giảm tối đa (đ)</span>
+          <input name="maxDiscount" type="number" min="0" step="1000" value="${escape(reward?.maxDiscount ?? '')}" placeholder="Không giới hạn" />
+          <small class="field-hint">Chỉ dùng cho giảm %.</small>
+        </label>
+        <label class="field">
+          <span>Trạng thái</span>
+          <select name="active">
+            <option value="1" ${reward?.active !== false ? 'selected' : ''}>Đang bật</option>
+            <option value="0" ${reward?.active === false ? 'selected' : ''}>Đang tắt</option>
+          </select>
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-action="close-modal">Huỷ</button>
+        <button type="submit" class="btn btn-primary">${reward ? 'Lưu thay đổi' : 'Thêm phần thưởng'}</button>
+      </div>
+    </form>`
+}
+
+const openGameRewardModal = (reward) => {
+  lastFocused = document.activeElement
+  state.editingGameReward = reward
+  el.modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${reward ? 'Sửa phần thưởng' : 'Thêm phần thưởng'}">
+        <header class="modal-head">
+          <h2>${reward ? 'Sửa phần thưởng' : 'Thêm phần thưởng'}</h2>
+          <button type="button" class="icon-btn" data-action="close-modal" aria-label="Đóng">✕</button>
+        </header>
+        ${gameRewardForm(reward)}
+      </div>
+    </div>`
+  document.body.style.overflow = 'hidden'
+  el.modalRoot.querySelector('[name="label"]')?.focus()
+}
+
+const quizOptionRows = (question) => {
+  const options = question?.options?.length ? question.options : ['', '', '', '']
+  return options.map((option, index) => `
+    <div class="quiz-option-row" data-option-row>
+      <input type="radio" name="answer" value="${index}" ${question ? (question.answer === index ? 'checked' : '') : index === 0 ? 'checked' : ''} aria-label="Đáp án đúng" />
+      <input type="text" name="option" value="${escape(option)}" maxlength="200" placeholder="Đáp án ${index + 1}" />
+      <button type="button" class="icon-btn is-danger" data-action="game-question-remove-option" title="Xoá đáp án" ${options.length <= 2 ? 'disabled' : ''}>✕</button>
+    </div>`).join('')
+}
+
+const gameQuestionForm = (question) => `
+  <form id="game-question-form" novalidate>
+    <div class="form-grid">
+      <label class="field span-2">
+        <span>Nội dung câu hỏi *</span>
+        <textarea name="prompt" maxlength="500" required placeholder="VD: Phở là đặc sản của vùng nào?">${escape(question?.prompt ?? '')}</textarea>
+      </label>
+      <div class="field span-2">
+        <span>Đáp án và đáp án đúng *</span>
+        <div id="quiz-option-editor" class="quiz-option-editor">
+          ${quizOptionRows(question)}
+        </div>
+        <button type="button" class="btn btn-sm btn-ghost" data-action="game-question-add-option">+ Thêm đáp án</button>
+        <small class="field-hint">Chọn nút tròn bên trái đáp án đúng. Tối đa 6 đáp án, tối thiểu 2.</small>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-action="close-modal">Huỷ</button>
+      <button type="submit" class="btn btn-primary">${question ? 'Lưu thay đổi' : 'Thêm câu hỏi'}</button>
+    </div>
+  </form>`
+
+const openGameQuestionModal = (question) => {
+  lastFocused = document.activeElement
+  state.editingGameQuestion = question
+  el.modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${question ? 'Sửa câu hỏi' : 'Thêm câu hỏi'}">
+        <header class="modal-head">
+          <h2>${question ? 'Sửa câu hỏi' : 'Thêm câu hỏi'}</h2>
+          <button type="button" class="icon-btn" data-action="close-modal" aria-label="Đóng">✕</button>
+        </header>
+        ${gameQuestionForm(question)}
+      </div>
+    </div>`
+  document.body.style.overflow = 'hidden'
+  el.modalRoot.querySelector('[name="prompt"]')?.focus()
+}
+
+const openGameConfirm = ({ title, message, action, id, label = 'Xác nhận' }) => {
+  el.modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal" role="dialog" aria-modal="true">
+        <header class="modal-head"><h2>${escape(title)}</h2></header>
+        <div class="form-grid"><p>${message}</p></div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-ghost" data-action="close-modal">Huỷ</button>
+          <button type="button" class="btn btn-primary" data-action="${escape(action)}" data-id="${escape(id ?? '')}">${escape(label)}</button>
+        </div>
+      </div>
+    </div>`
+  document.body.style.overflow = 'hidden'
+}
+
+const openGameResetConfirm = () => openGameConfirm({
+  title: 'Khôi phục cấu hình mặc định',
+  message: 'Bạn có chắc muốn khôi phục toàn bộ cấu hình mini game về mặc định? <b>Lịch sử nhận thưởng và voucher đã phát sẽ được giữ nguyên.</b>',
+  action: 'game-config-reset-confirm',
+  label: 'Khôi phục mặc định',
+})
+
+const submitGameConfig = (form) => {
+  const data = new FormData(form)
+  const bool = (name) => String(data.get(name) ?? '1') === '1'
+  const result = gameConfig.saveGameConfig({
+    enabled: bool('enabled'),
+    claimLimitPerDay: Number(data.get('claimLimitPerDay')),
+    voucherTtlDays: Number(data.get('voucherTtlDays')),
+    games: {
+      scratch: { enabled: bool('scratchEnabled'), threshold: Number(data.get('scratchThreshold')) },
+      memory: { enabled: bool('memoryEnabled'), pairs: Number(data.get('memoryPairs')) },
+      quiz: { enabled: bool('quizEnabled'), questionCount: Number(data.get('quizQuestionCount')) },
+    },
+  })
+  if (result.error) return toast(result.error, 'err')
+  toast('Đã lưu cấu hình mini game')
+  return renderGamesAdmin()
+}
+
+const submitGameReward = (form) => {
+  const reward = state.editingGameReward
+  const data = new FormData(form)
+  const type = String(data.get('type') ?? 'none')
+  const num = (name) => {
+    const raw = String(data.get(name) ?? '').trim()
+    return raw === '' ? 0 : Number(raw)
+  }
+  const payload = {
+    game: String(data.get('game') ?? 'scratch'),
+    tier: String(data.get('tier') ?? ''),
+    type: type === 'none' ? 'none' : type,
+    label: String(data.get('label') ?? '').trim(),
+    value: type === 'percent' || type === 'fixed' ? num('value') : 0,
+    weight: num('weight'),
+    minOrder: num('minOrder'),
+    maxDiscount: type === 'percent' ? num('maxDiscount') : 0,
+    active: String(data.get('active') ?? '1') === '1',
+  }
+  const result = reward
+    ? gameConfig.updateReward(reward.id, payload)
+    : gameConfig.createReward(payload)
+  if (result.error) return toast(result.error, 'err')
+  toast(reward ? 'Đã cập nhật phần thưởng' : 'Đã thêm phần thưởng')
+  closeModal()
+  return renderGamesAdmin()
+}
+
+const submitGameQuestion = (form) => {
+  const question = state.editingGameQuestion
+  const data = new FormData(form)
+  const inputs = [...form.querySelectorAll('[name="option"]')]
+  const rawOptions = inputs.map((input) => input.value.trim())
+  const selectedRaw = Number(form.querySelector('[name="answer"]:checked')?.value)
+  if (!Number.isInteger(selectedRaw) || selectedRaw < 0 || selectedRaw >= rawOptions.length) {
+    return toast('Vui lòng chọn một đáp án đúng', 'err')
+  }
+  if (!rawOptions[selectedRaw]) return toast('Đáp án đúng không được để trống', 'err')
+  const kept = rawOptions.map((option, index) => ({ option, index })).filter((item) => item.option)
+  const answer = kept.findIndex((item) => item.index === selectedRaw)
+  const payload = {
+    prompt: String(data.get('prompt') ?? '').trim(),
+    options: kept.map((item) => item.option),
+    answer,
+  }
+  const result = question
+    ? gameConfig.updateQuizQuestion(question.id, payload)
+    : gameConfig.createQuizQuestion(payload)
+  if (result.error) return toast(result.error, 'err')
+  toast(question ? 'Đã cập nhật câu hỏi' : 'Đã thêm câu hỏi')
+  closeModal()
+  return renderGamesAdmin()
+}
+
 
 const closeModal = () => {
   el.modalRoot.innerHTML = ''
   document.body.style.overflow = ''
   state.editing = null
   state.editingVoucher = null
+  state.editingGameReward = null
+  state.editingGameQuestion = null
   state.imagePreviewUrl = ''
   lastFocused?.focus?.()
   lastFocused = null
@@ -1070,6 +1665,144 @@ document.addEventListener('click', async (event) => {
       if (ok) closeModal()
       return render()
     }
+    if (action === 'game-admin-tab') {
+      const tab = target.dataset.tab
+      if (!GAME_ADMIN_TABS.some((item) => item.id === tab)) return undefined
+      state.gameTab = tab
+      return renderGamesAdmin()
+    }
+    if (action === 'game-global-toggle') {
+      if (deny()) return undefined
+      const config = gameConfig.getGameConfig()
+      const result = gameConfig.saveGameConfig({ enabled: target.dataset.enabled !== '1' })
+      if (result.error) return toast(result.error, 'err')
+      toast(config.enabled ? 'Đã tắt toàn bộ mini game' : 'Đã bật toàn bộ mini game')
+      return renderGamesAdmin()
+    }
+    if (action === 'game-toggle') {
+      if (deny()) return undefined
+      const game = target.dataset.game
+      const config = gameConfig.getGameConfig()
+      if (!config.games[game]) return toast('Game không hợp lệ', 'err')
+      const enabled = target.dataset.enabled !== '1'
+      const result = gameConfig.saveGameConfig({ games: { [game]: { enabled } } })
+      if (result.error) return toast(result.error, 'err')
+      toast(`${gameConfig.GAME_LABELS[game]} ${enabled ? 'đã bật' : 'đã tắt'}`)
+      return renderGamesAdmin()
+    }
+    if (action === 'game-config-reset') {
+      if (deny()) return undefined
+      return openGameResetConfirm()
+    }
+    if (action === 'game-config-reset-confirm') {
+      if (deny()) return undefined
+      gameConfig.resetGameConfig()
+      toast('Đã khôi phục cấu hình mini game mặc định')
+      closeModal()
+      return renderGamesAdmin()
+    }
+    if (action === 'game-reward-filter') {
+      state.gameRewardGame = target.dataset.game
+      return renderGamesAdmin()
+    }
+    if (action === 'game-reward-new') {
+      if (deny()) return undefined
+      return openGameRewardModal(null)
+    }
+    if (action === 'game-reward-edit') {
+      if (deny()) return undefined
+      const reward = gameConfig.findReward(target.dataset.id)
+      return reward ? openGameRewardModal(reward) : toast('Không tìm thấy phần thưởng', 'err')
+    }
+    if (action === 'game-reward-toggle') {
+      if (deny()) return undefined
+      const result = gameConfig.setRewardActive(target.dataset.id, target.dataset.active !== '1')
+      if (result.error) return toast(result.error, 'err')
+      toast(result.reward.active ? 'Đã bật phần thưởng' : 'Đã tắt phần thưởng')
+      return renderGamesAdmin()
+    }
+    if (action === 'game-reward-delete') {
+      if (deny()) return undefined
+      const reward = gameConfig.findReward(target.dataset.id)
+      if (!reward) return toast('Không tìm thấy phần thưởng', 'err')
+      return openGameConfirm({
+        title: 'Xoá phần thưởng',
+        message: `Bạn có chắc muốn xoá <b>${escape(reward.label)}</b> (${escape(gameConfig.GAME_LABELS[reward.game])})? Các voucher đã phát từ phần thưởng này vẫn giữ nguyên.`,
+        action: 'game-reward-delete-confirm',
+        id: reward.id,
+        label: 'Xoá phần thưởng',
+      })
+    }
+    if (action === 'game-reward-delete-confirm') {
+      if (deny()) return undefined
+      const result = gameConfig.deleteReward(target.dataset.id)
+      if (result.error) return toast(result.error, 'err')
+      toast('Đã xoá phần thưởng')
+      closeModal()
+      return renderGamesAdmin()
+    }
+    if (action === 'game-question-new') {
+      if (deny()) return undefined
+      return openGameQuestionModal(null)
+    }
+    if (action === 'game-question-edit') {
+      if (deny()) return undefined
+      const question = gameConfig.findQuizQuestion(target.dataset.id)
+      return question ? openGameQuestionModal(question) : toast('Không tìm thấy câu hỏi', 'err')
+    }
+    if (action === 'game-question-delete') {
+      if (deny()) return undefined
+      const question = gameConfig.findQuizQuestion(target.dataset.id)
+      if (!question) return toast('Không tìm thấy câu hỏi', 'err')
+      return openGameConfirm({
+        title: 'Xoá câu hỏi',
+        message: `Bạn có chắc muốn xoá câu hỏi <b>${escape(question.prompt)}</b>?`,
+        action: 'game-question-delete-confirm',
+        id: question.id,
+        label: 'Xoá câu hỏi',
+      })
+    }
+    if (action === 'game-question-delete-confirm') {
+      if (deny()) return undefined
+      const result = gameConfig.deleteQuizQuestion(target.dataset.id)
+      if (result.error) return toast(result.error, 'err')
+      toast('Đã xoá câu hỏi')
+      closeModal()
+      return renderGamesAdmin()
+    }
+    if (action === 'game-question-add-option') {
+      const editor = el.modalRoot.querySelector('#quiz-option-editor')
+      if (!editor) return undefined
+      if (editor.querySelectorAll('[data-option-row]').length >= 6) {
+        return toast('Tối đa 6 đáp án', 'err')
+      }
+      const index = editor.querySelectorAll('[data-option-row]').length
+      editor.insertAdjacentHTML('beforeend', `
+        <div class="quiz-option-row" data-option-row>
+          <input type="radio" name="answer" value="${index}" aria-label="Đáp án đúng" />
+          <input type="text" name="option" value="" maxlength="200" placeholder="Đáp án ${index + 1}" />
+          <button type="button" class="icon-btn is-danger" data-action="game-question-remove-option" title="Xoá đáp án">✕</button>
+        </div>`)
+      editor.querySelectorAll('[data-option-row]').forEach((row, i) => {
+        row.querySelector('[name="answer"]').value = i
+        row.querySelector('[name="option"]').placeholder = `Đáp án ${i + 1}`
+      })
+      return undefined
+    }
+    if (action === 'game-question-remove-option') {
+      const editor = el.modalRoot.querySelector('#quiz-option-editor')
+      const row = target.closest('[data-option-row]')
+      if (!editor || !row) return undefined
+      if (editor.querySelectorAll('[data-option-row]').length <= 2) {
+        return toast('Câu hỏi phải có ít nhất 2 đáp án', 'err')
+      }
+      row.remove()
+      editor.querySelectorAll('[data-option-row]').forEach((item, i) => {
+        item.querySelector('[name="answer"]').value = i
+        item.querySelector('[name="option"]').placeholder = `Đáp án ${i + 1}`
+      })
+      return undefined
+    }
     if (action === 'reset') {
       if (deny()) return undefined
       db.resetDishes()
@@ -1084,6 +1817,12 @@ document.addEventListener('click', async (event) => {
 })
 
 el.modalRoot.addEventListener('change', (event) => {
+  if (event.target.name === 'game' && event.target.closest('#game-reward-form')) {
+    const form = event.target.closest('form')
+    const tier = form.querySelector('[data-role="reward-tier"]')
+    if (tier) tier.innerHTML = rewardTierOptions(event.target.value, '')
+    return
+  }
   if (event.target.name !== 'imageFile') return
   const file = event.target.files?.[0]
   const preview = el.modalRoot.querySelector('#dish-image-preview')
@@ -1102,8 +1841,40 @@ el.modalRoot.addEventListener('submit', (event) => {
     event.preventDefault()
     return submitVoucher(event.target)
   }
+  if (event.target.id === 'game-reward-form') {
+    event.preventDefault()
+    return submitGameReward(event.target)
+  }
+  if (event.target.id === 'game-question-form') {
+    event.preventDefault()
+    return submitGameQuestion(event.target)
+  }
   return undefined
 })
+
+if (el.gameAdminBody) {
+  el.gameAdminBody.addEventListener('submit', (event) => {
+    if (event.target.id !== 'game-config-form') return
+    event.preventDefault()
+    submitGameConfig(event.target)
+  })
+  el.gameAdminBody.addEventListener('input', (event) => {
+    if (event.target.id !== 'game-history-search') return
+    state.gameHistoryQuery = event.target.value
+    renderGameHistoryResults()
+  })
+  el.gameAdminBody.addEventListener('change', (event) => {
+    if (event.target.id === 'game-history-status') {
+      state.gameHistoryStatus = event.target.value
+      renderGameHistoryResults()
+      return
+    }
+    if (event.target.id === 'game-history-game') {
+      state.gameHistoryGame = event.target.value
+      renderGameHistoryResults()
+    }
+  })
+}
 
 el.gateForm.addEventListener('submit', async (event) => {
   event.preventDefault()
@@ -1179,8 +1950,12 @@ window.addEventListener('storage', (event) => {
     event.key !== 'cbmfood.dishes' &&
     event.key !== 'cbmfood.reviews' &&
     event.key !== 'cbmfood.vouchers'
-  )
+  ) {
+    if (event.key === gameConfig.GAME_CONFIG_KEY || event.key === gameConfig.GAME_REWARDS_KEY) {
+      render()
+    }
     return
+  }
   db.reloadFromStorage()
   render()
 })

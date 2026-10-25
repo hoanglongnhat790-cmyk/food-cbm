@@ -7,10 +7,7 @@
  * (hạn dùng, lượt dùng, đơn tối thiểu) mà hệ thống đang có.
  */
 import * as db from './store.js'
-
-const REWARD_KEY = 'cbmfood.gameRewards'
-const CLAIM_LIMIT_PER_DAY = 5
-const REWARD_TTL_MS = 7 * 24 * 60 * 60 * 1000
+import * as gameConfig from './game-config.js'
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
@@ -19,52 +16,37 @@ const num = (value, fallback = 0) => {
   return Number.isFinite(n) && n >= 0 ? Math.round(n) : fallback
 }
 
-const readRewards = () => {
-  try {
-    const raw = localStorage.getItem(REWARD_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed.filter((r) => r && typeof r === 'object') : []
-  } catch {
-    return []
-  }
-}
-
-const writeRewards = (list) => {
-  try {
-    localStorage.setItem(REWARD_KEY, JSON.stringify(list))
-    return true
-  } catch {
-    return false
-  }
-}
-
 /* ===================== KHO PHẦN THƯỞNG ===================== */
 
 /**
  * Mỗi phần thưởng mô tả đúng một voucher thật sẽ được tạo ra khi trúng.
- * `weight` chỉ dùng cho bốc thăm; `claimable: false` là "không trúng" (vẫn
- * có trong pool để tỉ lệ trúng hợp lý).
+ * `weight` chỉ dùng cho bốc thăm; `type: null` là "không trúng" (vẫn có
+ * trong pool để tỉ lệ trúng hợp lý).
+ *
+ * Đây là getter: admin sửa/bật/tắt phần thưởng trong `cbmfood.gameConfig`
+ * thì trang khách đọc được ngay ở lần render kế tiếp, không cần tải lại code.
  */
 export const REWARD_POOL = {
   /* Cào thẻ: bốc ngẫu nhiên theo tỉ trọng. */
-  scratch: [
-    { id: 's-freeship', type: 'freeship', value: 0, maxDiscount: 0, minOrder: 80000, weight: 25, label: 'Miễn phí giao hàng' },
-    { id: 's-pct10', type: 'percent', value: 10, maxDiscount: 30000, minOrder: 100000, weight: 22, label: 'Giảm 10%' },
-    { id: 's-fixed20', type: 'fixed', value: 20000, maxDiscount: 0, minOrder: 150000, weight: 18, label: 'Giảm 20.000đ' },
-    { id: 's-pct20', type: 'percent', value: 20, maxDiscount: 50000, minOrder: 200000, weight: 8, label: 'Giảm 20%' },
-    { id: 's-fixed50', type: 'fixed', value: 50000, maxDiscount: 0, minOrder: 300000, weight: 5, label: 'Giảm 50.000đ' },
-    { id: 's-none', type: null, weight: 22, label: 'Chúc bạn may mắn lần sau' },
-  ],
-  /* Lật thẻ: quà an ủi theo số sao đạt được. */
-  memory: [
-    { id: 'm-pct10', type: 'percent', value: 10, maxDiscount: 30000, minOrder: 100000, weight: 1, label: 'Giảm 10%' },
-    { id: 'm-freeship', type: 'freeship', value: 0, maxDiscount: 0, minOrder: 60000, weight: 1, label: 'Miễn phí giao hàng' },
-    { id: 'm-fixed10', type: 'fixed', value: 10000, maxDiscount: 0, minOrder: 80000, weight: 1, label: 'Giảm 10.000đ' },
-  ],
+  get scratch() {
+    return gameConfig.getRewardPool('scratch')
+  },
+  /* Lật thẻ: quà an ủi theo số sao đạt được (3, 2, 1 sao). */
+  get memory() {
+    return ['3', '2', '1']
+      .map((tier) => gameConfig.getTierReward('memory', tier))
+      .filter(Boolean)
+  },
   /* Đố vui: quà theo bậc điểm. */
-  quizPerfect: { id: 'q-pct20', type: 'percent', value: 20, maxDiscount: 50000, minOrder: 150000, label: 'Giảm 20%' },
-  quizGood: { id: 'q-pct10', type: 'percent', value: 10, maxDiscount: 30000, minOrder: 100000, label: 'Giảm 10%' },
-  quizPass: { id: 'q-freeship', type: 'freeship', value: 0, maxDiscount: 0, minOrder: 50000, label: 'Miễn phí giao hàng' },
+  get quizPerfect() {
+    return gameConfig.getTierReward('quiz', 'perfect')
+  },
+  get quizGood() {
+    return gameConfig.getTierReward('quiz', 'good')
+  },
+  get quizPass() {
+    return gameConfig.getTierReward('quiz', 'pass')
+  },
 }
 
 /** Bốc một phần thưởng theo tỉ trọng. Nhận `rng` để test chạy xác định. */
@@ -88,19 +70,15 @@ const startOfToday = (now = Date.now()) => {
   return d.getTime()
 }
 
-/** Số lần còn được nhận quà game trong hôm nay. */
+/** Số lần còn được nhận quà game trong hôm nay (theo cấu hình admin). */
 export const gameClaimsLeft = (now = Date.now()) => {
   const today = startOfToday(now)
-  const used = readRewards().filter((r) => num(r.at) >= today).length
-  return Math.max(0, CLAIM_LIMIT_PER_DAY - used)
+  const used = gameConfig.readGameRewards().filter((r) => num(r.at) >= today).length
+  return Math.max(0, gameConfig.claimLimitPerDay() - used)
 }
 
 /** Danh sách quà đã trúng (mới nhất trước), kèm nhãn voucher để hiển thị. */
-export const listGameRewards = () =>
-  readRewards()
-    .slice()
-    .sort((a, b) => num(b.at) - num(a.at))
-    .map((r) => ({ ...r }))
+export const listGameRewards = () => gameConfig.listGameRewards()
 
 const randomCode = (rng) => {
   let out = 'GAME'
@@ -115,8 +93,16 @@ const randomCode = (rng) => {
  * Voucher đi qua `db.createVoucher` nên admin thấy ngay trong danh sách
  * voucher và khách dùng được y như mã khuyến mãi bình thường.
  */
-export const claimGameReward = (reward, { rng = Math.random, now = Date.now() } = {}) => {
+export const claimGameReward = (reward, { rng = Math.random, now = Date.now(), game = null } = {}) => {
   if (!reward || typeof reward !== 'object') return { error: 'Phần thưởng không hợp lệ' }
+  const gameId = gameConfig.GAME_IDS.includes(game)
+    ? game
+    : gameConfig.GAME_IDS.includes(reward.game)
+      ? reward.game
+      : null
+  if (gameId && !gameConfig.isGameEnabled(gameId)) {
+    return { error: `Mini game ${gameConfig.GAME_LABELS[gameId]} đang tạm tắt` }
+  }
   if (!reward.type) return { error: 'Lần này chưa trúng thưởng, chúc bạn may mắn lần sau' }
   if (!['percent', 'fixed', 'freeship'].includes(reward.type)) {
     return { error: 'Phần thưởng không hợp lệ' }
@@ -138,7 +124,7 @@ export const claimGameReward = (reward, { rng = Math.random, now = Date.now() } 
       maxDiscount: num(reward.maxDiscount),
       minOrder: num(reward.minOrder),
       startsAt: now,
-      expiresAt: now + REWARD_TTL_MS,
+      expiresAt: now + gameConfig.voucherTtlMs(),
       usageLimit: 1,
       perUserLimit: 1,
       active: true,
@@ -152,11 +138,14 @@ export const claimGameReward = (reward, { rng = Math.random, now = Date.now() } 
     code: created.code,
     rewardId: String(reward.id ?? ''),
     label: db.voucherLabel(created),
+    rewardLabel: String(reward.label ?? db.voucherLabel(created)),
     type: created.type,
     at: now,
     expiresAt: created.expiresAt,
+    game: gameId ?? 'unknown',
+    gameLabel: gameConfig.GAME_LABELS[gameId ?? 'unknown'],
   }
-  writeRewards([record, ...readRewards()].slice(0, 100))
+  gameConfig.recordGameReward(record)
 
   return {
     code: created.code,
@@ -164,14 +153,18 @@ export const claimGameReward = (reward, { rng = Math.random, now = Date.now() } 
     type: created.type,
     minOrder: created.minOrder,
     expiresAt: created.expiresAt,
-    claimsLeft: gameClaimsLeft(now) - 1,
+    claimsLeft: gameClaimsLeft(now),
+    game: record.game,
   }
 }
 
 /* ===================== (1) CÀO THẺ MAY MẮN ===================== */
 
-/** Tỉ lệ cào tối đa để mở thưởng. Cào dưới mức này giữ nguyên "chưa mở". */
+/** Tỉ lệ cào tối đa để mở thưởng (mặc định, admin có thể chỉnh). */
 export const SCRATCH_THRESHOLD = 0.55
+
+/** Ngưỡng cào đang áp dụng từ cấu hình admin (0..1). */
+export const scratchThreshold = () => gameConfig.gameThreshold()
 
 /** Tỉ lệ diện tích đã cào (0..1) từ số ô đã cào trên bàn cờ mô phỏng. */
 export const scratchRatio = (scratchedCells, totalCells) => {
@@ -182,8 +175,8 @@ export const scratchRatio = (scratchedCells, totalCells) => {
 }
 
 /** Mở thưởng khi đã cào đủ; thiếu thì giao diện vẫn đang "cào dở". */
-export const scratchRevealed = (scratchedCells, totalCells, threshold = SCRATCH_THRESHOLD) =>
-  scratchRatio(scratchedCells, totalCells) >= threshold
+export const scratchRevealed = (scratchedCells, totalCells, threshold = null) =>
+  scratchRatio(scratchedCells, totalCells) >= (threshold === null ? scratchThreshold() : threshold)
 
 /* ===================== (2) LẬP THẺ TÌM CẶP ===================== */
 
@@ -192,9 +185,9 @@ export const scratchRevealed = (scratchedCells, totalCells, threshold = SCRATCH_
  * Mỗi cặp là một món (tên + emoji/ảnh thật), xáo trộn bằng Fisher–Yates
  * với `rng` nhận vào để test bàn cờ xác định được.
  */
-export const createMemoryBoard = ({ dishes = null, pairs = 6, rng = Math.random } = {}) => {
+export const createMemoryBoard = ({ dishes = null, pairs = null, rng = Math.random } = {}) => {
   const source = (Array.isArray(dishes) && dishes.length ? dishes : db.listDishes()).filter(Boolean)
-  const count = Math.max(2, Math.min(12, Math.floor(num(pairs, 6))))
+  const count = Math.max(2, Math.min(12, Math.floor(num(pairs ?? gameConfig.gamePairCount(), 6))))
   if (source.length < count) return null
 
   const picked = [...source]
@@ -277,97 +270,26 @@ export const memoryStars = (moves, pairs) => {
   return 1
 }
 
-/** Quà của màn lật thẻ theo số sao. */
+/** Quà của màn lật thẻ theo số sao; admin tắt hết quà bậc đó thì trả null. */
 export const memoryReward = (stars) => {
   const level = Math.max(1, Math.min(3, num(stars, 1)))
-  return { ...REWARD_POOL.memory[3 - level] }
+  const reward = gameConfig.getTierReward('memory', String(level))
+  return reward ? { ...reward } : null
 }
 
 /* ===================== (3) ĐỐ VUI ẨM THỰC ===================== */
 
-/** Bank câu hỏi trắc nghiệm ẩm thực Việt Nam. */
-export const QUIZ_QUESTIONS = [
-  {
-    id: 'q1',
-    prompt: 'Phở là món ăn đặc sản của vùng miền nào?',
-    options: ['Miền Bắc', 'Miền Trung', 'Miền Nam', 'Tây Nguyên'],
-    answer: 0,
-  },
-  {
-    id: 'q2',
-    prompt: 'Bún bò Huế có nguồn gốc từ đâu?',
-    options: ['Hà Nội', 'Huế', 'Đà Nẵng', 'Sài Gòn'],
-    answer: 1,
-  },
-  {
-    id: 'q3',
-    prompt: 'Cơm tấm là đặc sản của vùng nào?',
-    options: ['Bắc Ninh', 'Cần Thơ', 'Sài Gòn (TP.HCM)', 'Đà Lạt'],
-    answer: 2,
-  },
-  {
-    id: 'q4',
-    prompt: 'Gỏi cuốn (bò bía tươi) thường gồm nhân gì?',
-    options: ['Tôm, thịt, bún, rau', 'Chả cá', 'Thịt kho trứng', 'Bánh xèo'],
-    answer: 0,
-  },
-  {
-    id: 'q5',
-    prompt: 'Bánh mì Việt Nam nổi tiếng thế giới với đặc điểm gì?',
-    options: ['Không nhân', 'Vỏ dày cứng', 'Vỏ giòn nhẹ, nhân đa dạng', 'Chỉ ngọt'],
-    answer: 2,
-  },
-  {
-    id: 'q6',
-    prompt: 'Cà phê sữa đá là thức uống phổ biến của vùng nào?',
-    options: ['Miền Bắc', 'Miền Trung', 'Miền Nam', 'Cao nguyên'],
-    answer: 2,
-  },
-  {
-    id: 'q7',
-    prompt: 'Món "bánh xèo" có hình dạng như thế nào?',
-    options: ['Bánh hấp tròn', 'Bánh chảo mỏng giòn vàng', 'Bánh nướng nhân ngọt', 'Bánh luộc'],
-    answer: 1,
-  },
-  {
-    id: 'q8',
-    prompt: 'Nước dùng của món bún riêu thường được nấu từ nguyên liệu chính nào?',
-    options: ['Xương heo', 'Cua đồng', 'Gà ác', 'Cá basa'],
-    answer: 1,
-  },
-  {
-    id: 'q9',
-    prompt: 'Chả giò (spring roll) của Việt Nam được làm bằng gì để cuốn?',
-    options: ['Bánh phở', 'Lá chuối', 'Bánh tráng (bánh đa)', 'Rong biển'],
-    answer: 2,
-  },
-  {
-    id: 'q10',
-    prompt: 'Món tráng miệng "chè" của Việt Nam thường có đặc điểm gì?',
-    options: ['Chỉ mặn', 'Ngọt, dùng đá bào hoặc nước cốt dừa', 'Không đường', 'Luôn nóng'],
-    answer: 1,
-  },
-  {
-    id: 'q11',
-    prompt: 'Món bún chả là đặc sản của thành phố nào?',
-    options: ['Hải Phòng', 'Hà Nội', 'Ninh Bình', 'Thanh Hóa'],
-    answer: 1,
-  },
-  {
-    id: 'q12',
-    prompt: 'Món "phá lấu" của Việt Nam bắt nguồn từ cách nấu nào?',
-    options: ['Kho/tầm với gia vị tàu (phiên bản Việt hoá)', 'Ẩm thực Pháp', 'Ẩm thực Nhật Bản', 'Nướng than nguyên con'],
-    answer: 0,
-  },
-]
+/** Bank câu hỏi mặc định (bản đang dùng do admin quản lý nằm trong game-config). */
+export const QUIZ_QUESTIONS = gameConfig.DEFAULT_GAME_CONFIG.quizQuestions
 
 /** Chọn bộ câu hỏi không trùng, xáo trộn thứ tự. */
-export const createQuizSet = ({ bank = QUIZ_QUESTIONS, count = 5, rng = Math.random } = {}) => {
-  const valid = (Array.isArray(bank) ? bank : []).filter(
+export const createQuizSet = ({ bank = null, count = null, rng = Math.random } = {}) => {
+  const source = Array.isArray(bank) ? bank : gameConfig.listQuizQuestions()
+  const valid = source.filter(
     (q) => q && typeof q.prompt === 'string' && Array.isArray(q.options) && q.options.length >= 2 &&
       Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.options.length,
   )
-  const size = Math.max(1, Math.min(valid.length, Math.floor(num(count, 5))))
+  const size = Math.max(1, Math.min(valid.length, Math.floor(num(count ?? gameConfig.gameQuestionCount(), 5))))
   const pool = [...valid]
   for (let i = pool.length - 1; i > 0; i -= 1) {
     const j = Math.floor(rng() * (i + 1))
@@ -387,8 +309,8 @@ export const gradeQuizAnswer = (question, optionIndex) => {
 export const quizScoreTier = (correct, total) => {
   const score = Math.max(0, num(correct))
   const max = Math.max(1, num(total, 1))
-  if (score >= max) return { tier: 'perfect', reward: { ...REWARD_POOL.quizPerfect } }
-  if (score >= Math.ceil(max * 0.8)) return { tier: 'good', reward: { ...REWARD_POOL.quizGood } }
-  if (score >= Math.ceil(max * 0.6)) return { tier: 'pass', reward: { ...REWARD_POOL.quizPass } }
+  if (score >= max) return { tier: 'perfect', reward: gameConfig.getTierReward('quiz', 'perfect') }
+  if (score >= Math.ceil(max * 0.8)) return { tier: 'good', reward: gameConfig.getTierReward('quiz', 'good') }
+  if (score >= Math.ceil(max * 0.6)) return { tier: 'pass', reward: gameConfig.getTierReward('quiz', 'pass') }
   return { tier: 'fail', reward: null }
 }

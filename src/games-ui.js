@@ -10,6 +10,7 @@ import * as db from './store.js'
 import * as cart from './cart.js'
 import * as auth from './auth.js'
 import * as games from './games.js'
+import * as gameConfig from './game-config.js'
 
 const escape = (value) =>
   String(value ?? '')
@@ -123,6 +124,7 @@ const newScratchCard = () => {
     revealed: false,
     claimed: null,
   }
+  gameConfig.recordGamePlay('scratch')
 }
 
 const sizeScratchCanvas = (canvas) => {
@@ -189,8 +191,8 @@ const bindScratchCanvas = (canvas) => {
 
   const maybeReveal = () => {
     if (!state.scratch || state.scratch.revealed) return
-    /* scratchedRatio trả về 0..1, so thẳng với ngưỡng của games.js. */
-    if (scratchedRatio() < games.SCRATCH_THRESHOLD) return
+    /* scratchedRatio trả về 0..1, so với ngưỡng admin đang cấu hình. */
+    if (scratchedRatio() < games.scratchThreshold()) return
     state.scratch.revealed = true
     canvas.hidden = true
     const box = root.querySelector('#scratchResult')
@@ -238,9 +240,10 @@ const scratchResultHtml = () => {
 const renderScratch = (stage) => {
   if (!state.scratch) newScratchCard()
   const revealed = state.scratch.revealed
+  const threshold = Math.round(games.scratchThreshold() * 100)
   stage.innerHTML = `
     <div class="game-panel">
-      <p class="game-lead">Cào lớp bạc bằng chuột hoặc ngón tay. Cào đủ ~55% diện tích thì quà mới lộ ra bạn nhé!</p>
+      <p class="game-lead">Cào lớp bạc bằng chuột hoặc ngón tay. Cào đủ ~${threshold}% diện tích thì quà mới lộ ra bạn nhé!</p>
       <div class="scratch-card">
         <div class="scratch-prize-layer">${scratchPrizeHtml(state.scratch.prize)}</div>
         ${revealed ? '' : '<canvas class="scratch-canvas" id="scratchCanvas" aria-label="Thẻ cào may mắn"></canvas>'}
@@ -324,12 +327,16 @@ const finishMemory = (stage) => {
   const reward = games.memoryReward(stars)
   const box = stage.querySelector('#memoryResult')
   if (!box) return
-  const claimable = games.gameClaimsLeft() > 0
+  const claimable = Boolean(reward) && games.gameClaimsLeft() > 0
   box.innerHTML = `
     <div class="memory-win" role="status">
       <p class="memory-stars">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</p>
       <p>Hoàn thành ${state.memory.pairs} cặp trong <b>${state.memory.moves}</b> lượt · <b>${timeText(state.memorySeconds)}</b></p>
-      <p class="muted">Quà an ủi: ${escape(reward.label)}${claimable ? ' — bấm nhận mã bên dưới nhé' : ' (hôm nay bạn đã nhận đủ quà)'}</p>
+      ${
+        reward
+          ? `<p class="muted">Quà an ủi: ${escape(reward.label)}${claimable ? ' — bấm nhận mã bên dưới nhé' : ' (hôm nay bạn đã nhận đủ quà)'}</p>`
+          : '<p class="muted">Bậc sao này hiện chưa có phần thưởng. Hãy thử lại hoặc liên hệ quản trị viên nhé!</p>'
+      }
       ${
         claimable
           ? '<button type="button" class="btn btn-primary" data-game-action="claim-memory">Nhận mã thưởng</button>'
@@ -342,11 +349,13 @@ const finishMemory = (stage) => {
 const renderMemory = (stage) => {
   stopMemoryTimer()
   state.memorySeconds = 0
-  state.memory = games.createMemoryBoard({ pairs: 6 })
+  const pairs = gameConfig.gamePairCount()
+  state.memory = games.createMemoryBoard({ pairs })
   if (!state.memory) {
-    stage.innerHTML = '<div class="game-panel"><p class="muted">Cần ít nhất 6 món trong thực đơn để chơi game lật thẻ.</p></div>'
+    stage.innerHTML = `<div class="game-panel"><p class="muted">Cần ít nhất ${pairs} món trong thực đơn để chơi game lật thẻ.</p></div>`
     return
   }
+  gameConfig.recordGamePlay('memory')
   stage.innerHTML = `
     <div class="game-panel">
       <p class="game-lead">Tìm các cặp món ăn giống nhau trong thực đơn CBM FOOD. Ít lượt lật — nhiều sao hơn!</p>
@@ -389,21 +398,32 @@ const handleMemoryCard = (cardId, stage) => {
 /* ===================== (3) ĐỐ VUI ẨM THỰC ===================== */
 
 const newQuiz = () => {
+  const questions = games.createQuizSet({ count: gameConfig.gameQuestionCount() })
   state.quiz = {
-    questions: games.createQuizSet({ count: 5 }),
+    questions,
     index: 0,
     correct: 0,
     answered: false,
+    pickedIndex: null,
+    pickedCorrect: false,
     finished: false,
     rewardTier: null,
     claimed: null,
   }
+  if (questions.length) gameConfig.recordGamePlay('quiz')
 }
 
 const renderQuiz = (stage) => {
   if (!state.quiz) newQuiz()
   const quiz = state.quiz
   const total = quiz.questions.length
+  if (!total) {
+    stage.innerHTML = `
+      <div class="game-panel">
+        <p class="muted">Ngân hàng câu hỏi đang trống. Quản trị viên sẽ bổ sung câu hỏi trong thời gian sớm nhất nhé!</p>
+      </div>`
+    return
+  }
   const current = quiz.questions[quiz.index]
 
   if (quiz.finished) {
@@ -475,9 +495,40 @@ const renderStage = () => {
   if (!root) return
   const stage = root.querySelector('#gameStage')
   if (!stage) return
+  const config = gameConfig.getGameConfig()
+  const enabledTabs = TABS.filter((tab) => config.enabled && config.games[tab.id]?.enabled)
+
   root.querySelectorAll('.game-tab').forEach((tab) => {
+    const enabled = config.enabled && config.games[tab.dataset.gameTab]?.enabled
     tab.classList.toggle('is-active', tab.dataset.gameTab === state.tab)
+    tab.classList.toggle('is-disabled', !enabled)
+    tab.setAttribute('aria-disabled', enabled ? 'false' : 'true')
+    tab.disabled = !enabled
   })
+
+  if (!enabledTabs.length) {
+    const reason = !config.enabled
+      ? 'Mini game đang tạm tắt. Quản trị viên sẽ bật lại trong thời gian sớm nhất.'
+      : 'Các mini game hiện đang tạm tắt. Bạn quay lại sau nhé!'
+    stage.innerHTML = `
+      <div class="game-panel game-offline" role="status">
+        <span class="game-offline-icon">🎮</span>
+        <h3>Mini game tạm đóng</h3>
+        <p>${escape(reason)}</p>
+      </div>`
+    renderRewardShelf()
+    return
+  }
+
+  if (!enabledTabs.some((tab) => tab.id === state.tab)) {
+    state.tab = enabledTabs[0].id
+    root.querySelectorAll('.game-tab').forEach((tab) => {
+      tab.classList.toggle('is-active', tab.dataset.gameTab === state.tab)
+    })
+    const active = root.querySelector(`.game-tab[data-game-tab="${state.tab}"]`)
+    if (active) active.setAttribute('aria-selected', 'true')
+  }
+
   if (state.tab === 'scratch') renderScratch(stage)
   else if (state.tab === 'memory') renderMemory(stage)
   else renderQuiz(stage)
@@ -489,6 +540,7 @@ const renderStage = () => {
 const onGameClick = (event) => {
   const tabBtn = event.target.closest('[data-game-tab]')
   if (tabBtn) {
+    if (tabBtn.disabled || !gameConfig.isGameEnabled(tabBtn.dataset.gameTab)) return
     stopMemoryTimer()
     state.tab = tabBtn.dataset.gameTab
     renderStage()
@@ -513,7 +565,7 @@ const onGameClick = (event) => {
     return
   }
   if (action === 'claim-scratch' && state.scratch) {
-    const result = games.claimGameReward(state.scratch.prize)
+    const result = games.claimGameReward(state.scratch.prize, { game: 'scratch' })
     if (result.error) return toastFn(result.error, 'err')
     state.scratch.claimed = result
     renderScratch(stage)
@@ -525,7 +577,7 @@ const onGameClick = (event) => {
     return
   }
   if (action === 'claim-memory' && state.memory?.pendingReward) {
-    const result = games.claimGameReward(state.memory.pendingReward)
+    const result = games.claimGameReward(state.memory.pendingReward, { game: 'memory' })
     if (result.error) return toastFn(result.error, 'err')
     state.memory.pendingReward = null
     const box = stage.querySelector('#memoryResult')
@@ -559,7 +611,7 @@ const onGameClick = (event) => {
     return
   }
   if (action === 'claim-quiz' && state.quiz) {
-    const result = games.claimGameReward(state.quiz.rewardTier)
+    const result = games.claimGameReward(state.quiz.rewardTier, { game: 'quiz' })
     if (result.error) return toastFn(result.error, 'err')
     state.quiz.claimed = result
     renderQuiz(stage)
@@ -604,4 +656,12 @@ export const mountGames = ({ container, toast, refreshCart } = {}) => {
 
   root.addEventListener('click', onGameClick)
   renderStage()
+
+  /* Admin đổi cấu hình ở tab khác: cùng trình duyệt sẽ nhận sự kiện storage
+     và cập nhật ngay trạng thái bật/tắt, ngưỡng cào, số cặp... */
+  window.addEventListener('storage', (event) => {
+    if (event.key === gameConfig.GAME_CONFIG_KEY || event.key === gameConfig.GAME_REWARDS_KEY) {
+      renderStage()
+    }
+  })
 }

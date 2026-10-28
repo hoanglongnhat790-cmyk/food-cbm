@@ -46,6 +46,7 @@
           <a href="#/ship" data-nav="ship">🚴 Điều phối ship</a>
           <a href="/shipper.html">📱 Đăng nhập Shipper</a>
           <a href="#/vouchers" data-nav="vouchers">🎟️ Voucher</a>
+          <a href="#/games" data-nav="games">🎮 Mini Game</a>
         </nav>
         <button type="button" class="side-reset" data-action="reset">Khôi phục dữ liệu mẫu</button>
         <a class="side-back" href="/">← Về cửa hàng</a>
@@ -204,6 +205,23 @@
             <div class="voucher-list" id="voucher-list"></div>
           </section>
 
+          <section class="view" data-view="games" hidden>
+            <header class="view-head">
+              <div>
+                <h2>Quản lý Mini Game</h2>
+                <p class="muted" id="game-admin-summary"></p>
+              </div>
+              <button type="button" class="btn btn-ghost" data-action="game-config-reset">↺ Khôi phục cấu hình mặc định</button>
+            </header>
+            <div class="game-admin-tabs" role="tablist" aria-label="Quản lý mini game">
+              <button type="button" class="game-admin-tab" role="tab" data-action="game-admin-tab" data-tab="overview">Tổng quan</button>
+              <button type="button" class="game-admin-tab" role="tab" data-action="game-admin-tab" data-tab="config">Cấu hình</button>
+              <button type="button" class="game-admin-tab" role="tab" data-action="game-admin-tab" data-tab="rewards">Phần thưởng</button>
+              <button type="button" class="game-admin-tab" role="tab" data-action="game-admin-tab" data-tab="questions">Câu hỏi</button>
+              <button type="button" class="game-admin-tab" role="tab" data-action="game-admin-tab" data-tab="history">Lịch sử</button>
+            </div>
+            <div id="game-admin-body" class="game-admin-body"></div>
+          </section>
         </main>
       </div>
     </div>

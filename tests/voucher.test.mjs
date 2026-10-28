@@ -322,7 +322,8 @@ test('khoi phuc du lieu mau thi xoa ca voucher', async () => {
   store.createVoucher({ code: 'GIAM10', type: 'percent', value: 10 })
   store.resetDishes()
   assert.equal(store.findVoucher('GIAM10'), null, 'reset la lam moi toan bo')
-  assert.equal(store.listVouchers().length, 0)
+  /* Reset nạp lại đúng bộ voucher khuyến mãi seed trong foods.json. */
+  assert.equal(store.listVouchers().length, store.promotions().length)
 })
 
 /* ===================== TON KHO ===================== */
@@ -575,6 +576,17 @@ test('thong ke dem voucher dang dung duoc, khong dem nguoc lai', async () => {
   })
 
   const stats = store.stats()
-  assert.equal(stats.voucherCount, 3, 'co ca 3 ma da tao')
-  assert.equal(stats.voucherLiveCount, 1, 'chi ma con bat va con luot moi dung duoc')
+  const now = Date.now()
+  const seededLive = store
+    .listVouchers()
+    .filter((voucher) => ['CBM10', 'FREESHIP', 'NEWUSER'].includes(voucher.code))
+    .filter(
+      (voucher) =>
+        voucher.active &&
+        (!voucher.startsAt || now >= voucher.startsAt) &&
+        (!voucher.expiresAt || now <= voucher.expiresAt) &&
+        (!voucher.usageLimit || voucher.usedCount < voucher.usageLimit),
+    ).length
+  assert.equal(stats.voucherCount, store.promotions().length + 3, 'co ca 3 ma da tao')
+  assert.equal(stats.voucherLiveCount, seededLive + 1, 'chi ma con bat va con luot moi dung duoc')
 })

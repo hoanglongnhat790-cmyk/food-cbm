@@ -8,6 +8,25 @@ const SALE_KEY = 'cbmfood.dishSeq'
 const ORDER_SEQ_KEY = 'cbmfood.orderSeq'
 const ADDRESS_KEY = 'cbmfood.addresses'
 
+const read = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return fallback
+    const parsed = JSON.parse(raw)
+    return parsed ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
+const write = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+    return true
+  } catch {
+    return false
+  }
+}
 
 export const listAddresses = () => {
   const value = read(ADDRESS_KEY, [])
@@ -76,7 +95,95 @@ const ORDER_NEXT = {
 export const nextOrderStatuses = (status) => [...(ORDER_NEXT[status] ?? [])]
 
 
-export const CATEGORIES = rawFoods.categories.map((c) => ({ id: c.id, name: c.name }))
+const CATEGORY_KEY = 'cbmfood.categories'
+
+const SEED_CATEGORIES = rawFoods.categories.map((c) => ({
+  id: c.id,
+  name: c.name,
+  icon: c.icon || '🍽️',
+  description: c.description || '',
+}))
+
+const loadCategories = () => {
+  const stored = read(CATEGORY_KEY, null)
+  if (!Array.isArray(stored) || stored.length === 0) {
+    write(CATEGORY_KEY, SEED_CATEGORIES)
+    return SEED_CATEGORIES
+  }
+  // Đồng bộ danh mục mới từ seed nếu chưa có
+  const ids = new Set(stored.map((c) => c.id))
+  const merged = [...stored]
+  let dirty = false
+  for (const sc of SEED_CATEGORIES) {
+    if (!ids.has(sc.id)) {
+      merged.push(sc)
+      dirty = true
+    }
+  }
+  if (dirty) write(CATEGORY_KEY, merged)
+  return merged
+}
+
+let _categories = loadCategories()
+
+export const CATEGORIES = _categories.map((c) => ({ id: c.id, name: c.name }))
+
+const syncCategoriesExport = () => {
+  CATEGORIES.length = 0
+  CATEGORIES.push(..._categories.map((c) => ({ id: c.id, name: c.name })))
+}
+
+export const listCategories = () => _categories.map((c) => ({ ...c }))
+
+export const findCategory = (id) => {
+  const found = _categories.find((c) => c.id === id)
+  return found ? { ...found } : null
+}
+
+export const createCategory = (input = {}) => {
+  const id = String(input.id ?? '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+  const name = String(input.name ?? '').trim()
+  const icon = String(input.icon ?? '🍽️').trim() || '🍽️'
+  const description = String(input.description ?? '').trim()
+  if (!id) return { error: 'ID danh mục không hợp lệ' }
+  if (!name) return { error: 'Vui lòng nhập tên danh mục' }
+  if (_categories.some((c) => c.id === id)) return { error: 'ID danh mục đã tồn tại' }
+  const cat = { id, name, icon, description }
+  _categories = [..._categories, cat]
+  write(CATEGORY_KEY, _categories)
+  syncCategoriesExport()
+  return { category: { ...cat } }
+}
+
+export const updateCategory = (id, input = {}) => {
+  const index = _categories.findIndex((c) => c.id === id)
+  if (index === -1) return { error: 'Không tìm thấy danh mục' }
+  const name = String(input.name ?? _categories[index].name).trim()
+  const icon = String(input.icon ?? _categories[index].icon).trim() || '🍽️'
+  const description = String(input.description ?? _categories[index].description).trim()
+  if (!name) return { error: 'Vui lòng nhập tên danh mục' }
+  const updated = { ..._categories[index], name, icon, description }
+  _categories = _categories.map((c, i) => (i === index ? updated : c))
+  write(CATEGORY_KEY, _categories)
+  syncCategoriesExport()
+  return { category: { ...updated } }
+}
+
+export const deleteCategory = (id) => {
+  if (SEED_CATEGORIES.some((c) => c.id === id)) return { error: 'Không thể xóa danh mục mặc định' }
+  const before = _categories.length
+  _categories = _categories.filter((c) => c.id !== id)
+  if (_categories.length === before) return { error: 'Không tìm thấy danh mục' }
+  write(CATEGORY_KEY, _categories)
+  syncCategoriesExport()
+  return { ok: true }
+}
+
+export const reloadCategoriesFromStorage = () => {
+  _categories = loadCategories()
+  syncCategoriesExport()
+}
+
 
 // Các đơn vị/cửa hàng bán món. Mỗi món có một đơn vị riêng thay vì mặc định tất cả là CBM FOOD.
 export const VENDORS = [
@@ -325,25 +432,6 @@ export const normalizeImage = (value) => {
   return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/') ? url : ''
 }
 
-const read = (key, fallback) => {
-  try {
-    const raw = localStorage.getItem(key)
-    if (!raw) return fallback
-    const parsed = JSON.parse(raw)
-    return parsed ?? fallback
-  } catch {
-    return fallback
-  }
-}
-
-const write = (key, value) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-    return true
-  } catch {
-    return false
-  }
-}
 
 /* foods.json để cùng một nhãn ở cả `tagType` và `tag` (ví dụ tagType:
    "bestseller" + tag: "Bán chạy nhất"), nếu nối thẳng sẽ ra hai thẻ giống
@@ -601,10 +689,11 @@ export const resetDishes = () => {
   /* Đánh giá trỏ tới mã môn/đơn cũ nên phải xoá luôn, nếu không mảng này vẫn
      giữ trong bộ nhớ và làm điểm của món cũ rò sang lần nạp sau. */
   reviews = []
-  vouchers = Array.isArray(rawFoods.promotions)
-    ? rawFoods.promotions.map(seedVoucher).filter(Boolean)
-    : []
+  vouchers = []
   orderSeq = 0
+  _categories = [...SEED_CATEGORIES]
+  write(CATEGORY_KEY, _categories)
+  syncCategoriesExport()
   persistDishes()
   persistOrders()
   persistReviews()

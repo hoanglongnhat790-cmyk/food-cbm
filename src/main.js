@@ -378,7 +378,7 @@ const dishCard = (dish, index) => {
     : `<span class="dish-emoji">${escape(dish.emoji)}</span>`
   return `
     <article class="dish" data-category="${escape(dish.category)}">
-      <div class="dish-art">
+      <div class="dish-art" data-dish-detail="${escape(dish.code)}" role="button" tabindex="0" title="Nhấn để xem chi tiết ${escape(dish.name)}" style="cursor:pointer">
         ${art}
         <span class="dish-number">${String(index + 1).padStart(2, '0')}</span>
         ${
@@ -394,10 +394,10 @@ const dishCard = (dish, index) => {
         }
       </div>
       <div class="dish-vendor">🏪 ${escape(vendor.name)} · <span aria-label="${vendor.rating} trên 5 sao">★★★★★</span> ${vendor.rating}</div>
-      <h3>${escape(dish.name)}</h3>
+      <h3 data-dish-detail="${escape(dish.code)}" role="button" tabindex="0" title="Nhấn để xem chi tiết ${escape(dish.name)}" style="cursor:pointer">${escape(dish.name)}</h3>
       ${
         rating.count
-          ? `<p class="dish-rating">${starBar(rating.average)}<span>${rating.average} · ${rating.count} đánh giá</span></p>`
+          ? `<p class="dish-rating" data-dish-detail="${escape(dish.code)}" style="cursor:pointer">${starBar(rating.average)}<span>${rating.average} · ${rating.count} đánh giá</span></p>`
           : ''
       }
       <p class="dish-desc">${escape(dish.description)}</p>
@@ -407,6 +407,12 @@ const dishCard = (dish, index) => {
       <div class="dish-foot">
         <span class="price">${money(dish.price)}</span>
         <div class="dish-actions">
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost order-detail-btn"
+            data-dish-detail="${escape(dish.code)}"
+            title="Xem chi tiết món ăn"
+          >Chi tiết</button>
           <button
             type="button"
             class="btn btn-sm btn-ghost order-options-btn"
@@ -427,16 +433,17 @@ const dishCard = (dish, index) => {
 }
 
 const renderCategories = () => {
+  const cats = db.listCategories ? db.listCategories() : db.CATEGORIES
   filterBox.innerHTML = [
     '<button class="category-btn active" data-category="all">Tất cả</button>',
-    ...db.CATEGORIES.map(
+    ...cats.map(
       (cat) =>
         `<button class="category-btn" data-category="${escape(cat.id)}">${escape(cat.name)}</button>`,
     ),
   ].join('')
 }
 
-const dishName = (id) => db.CATEGORIES.find((c) => c.id === id)?.name ?? ''
+const dishName = (id) => (db.findCategory?.(id)?.name || db.CATEGORIES.find((c) => c.id === id)?.name) ?? ''
 
 const renderDishes = () => {
   const all = db.listDishes()
@@ -652,6 +659,119 @@ const renderCartPanel = () => {
         : `<p class="cart-empty">Giỏ hàng đang trống.</p>
            <button type="button" class="btn btn-primary btn-block" data-action="browse-menu">Xem thực đơn</button>`
     }`
+}
+
+let currentDetailDish = null
+let currentDetailQty = 1
+
+const openDishDetail = (code) => {
+  const dish = db.findDish(code)
+  if (!dish) return toast('Không tìm thấy món', 'err')
+  lastFocused = document.activeElement
+  currentDetailDish = dish
+  currentDetailQty = 1
+  const rating = db.dishRating(dish.code)
+  const vendor = db.vendorOf(dish.vendorId)
+  const category = db.findCategory ? db.findCategory(dish.category) : db.CATEGORIES.find((c) => c.id === dish.category)
+  const soldOut = !db.isPurchasable(dish)
+  const dishReviews = db.listReviews ? db.listReviews().filter((r) => r.dishKey === dish.code && !r.hidden) : []
+  const art = dish.image
+    ? `<img src="${escape(dish.image)}" alt="${escape(dish.name)}" class="dish-detail-img" />`
+    : `<div class="dish-detail-emoji-box"><span class="dish-detail-emoji">${escape(dish.emoji)}</span></div>`
+
+  ui.innerHTML = `
+    <div class="modal-backdrop-cart" data-close="1">
+      <div class="sheet dish-detail-sheet" role="dialog" aria-modal="true" aria-label="Chi tiết món ăn">
+        <header class="sheet-head">
+          <div>
+            <h2>${escape(dish.name)}</h2>
+            <small class="muted">${escape(category?.name || 'Món ngon')} · Mã: ${escape(dish.code)}</small>
+          </div>
+          <button type="button" class="icon-btn" data-close="1" aria-label="Đóng">✕</button>
+        </header>
+        <div class="sheet-body">
+          <div class="dish-detail-media">
+            ${art}
+          </div>
+          <div class="dish-detail-info">
+            <div class="dish-detail-vendor-row">
+              <span>🏪 <b>${escape(vendor.name)}</b></span>
+              <span class="muted">· ⭐ ${vendor.rating} · ⏱️ ${vendor.deliveryTime} phút</span>
+            </div>
+            <div class="dish-detail-price-row">
+              <span class="dish-detail-price" id="detailPrice">${money(dish.price)}</span>
+              ${
+                db.isSoldOut(dish)
+                  ? '<span class="dish-flag is-off">Hết hàng</span>'
+                  : dish.status === 'unavailable'
+                    ? '<span class="dish-flag is-off">Tạm ngưng</span>'
+                    : dish.status === 'runningOut'
+                      ? '<span class="dish-flag is-warn">Sắp hết</span>'
+                      : dish.stock !== null
+                        ? `<span class="badge is-info">Còn ${dish.stock} phần</span>`
+                        : '<span class="badge is-success">Sẵn sàng phục vụ</span>'
+              }
+            </div>
+            ${
+              rating.count
+                ? `<div class="dish-detail-rating">${starBar(rating.average)} <b>${rating.average}</b> <span class="muted">(${rating.count} lượt đánh giá)</span></div>`
+                : '<div class="dish-detail-rating muted">Chưa có đánh giá nào</div>'
+            }
+            <div class="dish-detail-desc">
+              <h4>Mô tả món ăn:</h4>
+              <p>${escape(dish.description)}</p>
+            </div>
+            ${
+              dish.tags?.length
+                ? `<div class="dish-tags">${dish.tags.map((t) => `<span class="dish-tag">${escape(t)}</span>`).join('')}</div>`
+                : ''
+            }
+            <div class="dish-detail-reviews-section">
+              <h4>Đánh giá từ khách hàng (${dishReviews.length}):</h4>
+              <div class="dish-reviews-list">
+                ${
+                  dishReviews.length
+                    ? dishReviews.slice(0, 5).map((r) => `
+                        <div class="dish-review-item">
+                          <div class="dish-review-head">
+                            <b>${escape(r.userName || 'Khách hàng')}</b>
+                            <span class="stars">${'★'.repeat(Math.round(r.rating))}${'☆'.repeat(5 - Math.round(r.rating))}</span>
+                            <small class="muted">${r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : ''}</small>
+                          </div>
+                          ${r.comment ? `<p class="dish-review-comment">${escape(r.comment)}</p>` : ''}
+                        </div>
+                      `).join('')
+                    : '<p class="muted dish-review-empty">Chưa có bình luận đánh giá nào cho món này.</p>'
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sheet-foot">
+          <div class="dish-detail-actions">
+            <div class="dish-detail-qty-control">
+              <button type="button" class="btn btn-ghost btn-sm" data-action="detail-qty-minus" ${soldOut ? 'disabled' : ''}>−</button>
+              <span id="detailQtyVal" style="font-weight:700;min-width:24px;text-align:center;">1</span>
+              <button type="button" class="btn btn-ghost btn-sm" data-action="detail-qty-plus" ${soldOut ? 'disabled' : ''}>+</button>
+            </div>
+            <button
+              type="button"
+              class="btn btn-ghost"
+              data-add-options="${escape(dish.code)}"
+              ${soldOut ? 'disabled' : ''}
+            >Topping</button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              data-action="detail-add-cart"
+              data-code="${escape(dish.code)}"
+              ${soldOut ? 'disabled' : ''}
+            >${db.isSoldOut(dish) ? 'Hết hàng' : dish.status === 'unavailable' ? 'Tạm ngưng' : `Thêm vào giỏ · ${money(dish.price)}`}</button>
+          </div>
+        </div>
+      </div>
+    </div>`
+  document.body.style.overflow = 'hidden'
 }
 
 const openToppingSheet = (code) => {
@@ -1671,6 +1791,11 @@ document.addEventListener('click', async (event) => {
     return openToppingSheet(optionsBtn.dataset.addOptions)
   }
 
+  const detailBtn = target.closest('[data-dish-detail]')
+  if (detailBtn) {
+    return openDishDetail(detailBtn.dataset.dishDetail)
+  }
+
   const qtyBtn = target.closest('[data-qty]')
   if (qtyBtn) {
     const line = cart.list().find((l) => l.lineId === qtyBtn.dataset.key)
@@ -1699,6 +1824,40 @@ document.addEventListener('click', async (event) => {
   const actionBtn = target.closest('[data-action]')
   if (actionBtn) {
     const action = actionBtn.dataset.action
+    if (action === 'detail-qty-minus') {
+      if (currentDetailQty > 1 && currentDetailDish) {
+        currentDetailQty--
+        const valEl = ui.querySelector('#detailQtyVal')
+        if (valEl) valEl.textContent = currentDetailQty
+        const btnEl = ui.querySelector('[data-action="detail-add-cart"]')
+        if (btnEl) btnEl.textContent = `Thêm vào giỏ · ${money(currentDetailDish.price * currentDetailQty)}`
+      }
+      return undefined
+    }
+    if (action === 'detail-qty-plus') {
+      if (currentDetailDish) {
+        const ceiling = currentDetailDish.stock === null ? 20 : Math.min(20, currentDetailDish.stock)
+        if (currentDetailQty < ceiling) {
+          currentDetailQty++
+          const valEl = ui.querySelector('#detailQtyVal')
+          if (valEl) valEl.textContent = currentDetailQty
+          const btnEl = ui.querySelector('[data-action="detail-add-cart"]')
+          if (btnEl) btnEl.textContent = `Thêm vào giỏ · ${money(currentDetailDish.price * currentDetailQty)}`
+        } else {
+          toast(`Chỉ còn tối đa ${ceiling} phần`, 'err')
+        }
+      }
+      return undefined
+    }
+    if (action === 'detail-add-cart') {
+      const code = actionBtn.dataset.code
+      const result = cart.add(code, currentDetailQty)
+      if (result.error) return toast(cartErrorMessage(result, code), 'err')
+      refreshCart()
+      toast(`Đã thêm ${currentDetailQty} phần vào giỏ`)
+      closePanels()
+      return undefined
+    }
     if (action === 'open-cart') return openCart()
     if (action === 'checkout') return openCheckout()
     if (action === 'back-to-cart') return openCart()
@@ -2155,6 +2314,12 @@ window.addEventListener('storage', (event) => {
     renderDishes()
     lastOrdersSignature = null
     refreshMyOrders()
+    return
+  }
+  if (event.key === 'cbmfood.categories') {
+    db.reloadCategoriesFromStorage?.()
+    renderCategories()
+    renderDishes()
     return
   }
   if (event.key !== 'cbmfood.dishes') return

@@ -38,12 +38,14 @@
           </span>
         </a>
         <nav class="side-nav">
-          <a href="#/dashboard" data-nav="dashboard">Tổng quan</a>
-          <a href="#/dishes" data-nav="dishes">Món ăn</a>
-          <a href="#/orders" data-nav="orders">Đơn hàng</a>
+          <a href="#/dashboard" data-nav="dashboard">📊 Tổng quan</a>
+          <a href="#/dishes" data-nav="dishes">🍜 Món ăn</a>
+          <a href="#/categories" data-nav="categories">🗂️ Danh mục</a>
+          <a href="#/orders" data-nav="orders">📦 Đơn hàng</a>
+          <a href="#/customers" data-nav="customers">👥 Khách hàng</a>
           <a href="#/ship" data-nav="ship">🚴 Điều phối ship</a>
           <a href="/shipper.html">📱 Đăng nhập Shipper</a>
-          <a href="#/vouchers" data-nav="vouchers">Voucher</a>
+          <a href="#/vouchers" data-nav="vouchers">🎟️ Voucher</a>
         </nav>
         <button type="button" class="side-reset" data-action="reset">Khôi phục dữ liệu mẫu</button>
         <a class="side-back" href="/">← Về cửa hàng</a>
@@ -66,6 +68,8 @@
         </header>
 
         <main class="content">
+
+          <!-- ===== TỔNG QUAN ===== -->
           <section class="view" data-view="dashboard" hidden>
             <div class="stat-grid" id="stat-grid"></div>
             <div class="panel-grid">
@@ -82,7 +86,7 @@
                 <div class="panel-body" id="top-dishes"></div>
               </section>
               <section class="panel">
-                <header class="panel-head"><h2>Kho nguyên liệu & món</h2></header>
+                <header class="panel-head"><h2>Kho nguyên liệu &amp; món</h2></header>
                 <div class="panel-body" id="inventory-summary"></div>
               </section>
               <section class="panel panel-wide">
@@ -96,6 +100,7 @@
             </div>
           </section>
 
+          <!-- ===== MÓN ĂN ===== -->
           <section class="view" data-view="dishes" hidden>
             <header class="view-head">
               <div>
@@ -119,6 +124,22 @@
             <div class="card-grid" id="dish-list"></div>
           </section>
 
+          <!-- ===== DANH MỤC ===== -->
+          <section class="view" data-view="categories" hidden>
+            <header class="view-head">
+              <div>
+                <h2>Quản lý danh mục món ăn</h2>
+                <p class="muted" id="category-summary"></p>
+              </div>
+              <button type="button" class="btn btn-primary" data-action="category-new">+ Thêm danh mục</button>
+            </header>
+            <div class="toolbar">
+              <input type="search" id="category-search" placeholder="Tìm danh mục..." autocomplete="off" />
+            </div>
+            <div class="category-grid" id="category-list"></div>
+          </section>
+
+          <!-- ===== ĐƠN HÀNG ===== -->
           <section class="view" data-view="orders" hidden>
             <header class="view-head">
               <div>
@@ -133,8 +154,27 @@
             <div class="order-list" id="order-list"></div>
           </section>
 
+          <!-- ===== KHÁCH HÀNG ===== -->
+          <section class="view" data-view="customers" hidden>
+            <header class="view-head">
+              <div>
+                <h2>Quản lý tài khoản khách hàng</h2>
+                <p class="muted" id="customer-summary"></p>
+              </div>
+            </header>
+            <div class="toolbar">
+              <input type="search" id="customer-search" placeholder="Tìm theo tên, email hoặc SĐT..." autocomplete="off" />
+              <select id="customer-role-filter" aria-label="Vai trò">
+                <option value="all">Tất cả vai trò</option>
+                <option value="customer">Khách hàng</option>
+                <option value="shipper">Shipper</option>
+                <option value="admin">Quản trị</option>
+              </select>
+            </div>
+            <div class="customer-list" id="customer-list"></div>
+          </section>
 
-
+          <!-- ===== ĐIỀU PHỐI SHIP ===== -->
           <section class="view" data-view="ship" hidden>
             <header class="view-head">
               <div>
@@ -148,6 +188,8 @@
             </div>
             <div class="ship-board" id="ship-board"></div>
           </section>
+
+          <!-- ===== VOUCHER ===== -->
           <section class="view" data-view="vouchers" hidden>
             <header class="view-head">
               <div>
@@ -161,6 +203,7 @@
             </div>
             <div class="voucher-list" id="voucher-list"></div>
           </section>
+
         </main>
       </div>
     </div>

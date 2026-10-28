@@ -48,6 +48,13 @@ const el = {
   voucherList: $('#voucher-list'),
   voucherSummary: $('#voucher-summary'),
   voucherSearch: $('#voucher-search'),
+  customerList: $('#customer-list'),
+  customerSummary: $('#customer-summary'),
+  customerSearch: $('#customer-search'),
+  customerRoleFilter: $('#customer-role-filter'),
+  categoryList: $('#category-list'),
+  categorySummary: $('#category-summary'),
+  categorySearch: $('#category-search'),
   modalRoot: $('#modal-root'),
   toastRoot: $('#toast-root'),
 }
@@ -55,7 +62,9 @@ const el = {
 const PAGES = {
   dashboard: { title: 'Tổng quan', sub: 'Sức khoẻ cửa hàng hôm nay.' },
   dishes: { title: 'Món ăn', sub: 'Thêm, sửa, xoá món trong thực đơn.' },
+  categories: { title: 'Danh mục', sub: 'Quản lý phân luồng danh mục món ăn.' },
   orders: { title: 'Đơn hàng', sub: 'Theo dõi và cập nhật trạng thái đơn.' },
+  customers: { title: 'Khách hàng', sub: 'Quản lý tài khoản khách hàng đã đăng ký.' },
   vouchers: { title: 'Voucher', sub: 'Mã giảm giá cho khách.' },
   ship: { title: 'Điều phối ship', sub: 'Theo dõi đơn đang giao và chuyển trạng thái giao hàng.' },
 }
@@ -67,8 +76,12 @@ const state = {
   orderQuery: '',
   orderStatus: 'all',
   voucherQuery: '',
+  customerQuery: '',
+  customerRole: 'all',
+  categoryQuery: '',
   editing: null,
   editingVoucher: null,
+  editingCategory: null,
   emoji: '',
   imagePreviewUrl: '',
 }
@@ -453,9 +466,203 @@ const render = () => {
   })
   if (page === 'dashboard') renderStats()
   if (page === 'dishes') renderDishes()
+  if (page === 'categories') renderCategories()
   if (page === 'orders') renderOrders()
+  if (page === 'customers') renderCustomers()
   if (page === 'ship') renderShip()
   if (page === 'vouchers') renderVouchers()
+}
+
+/* ---------------- categories ---------------- */
+
+const ROLE_LABEL = { admin: 'Quản trị', customer: 'Khách hàng', shipper: 'Shipper' }
+const ROLE_TONE = { admin: 'ok', customer: 'info', shipper: 'warn' }
+
+const renderCategories = () => {
+  const all = db.listCategories()
+  const words = normalizeQuery(state.categoryQuery).split(' ').filter(Boolean)
+  const rows = all.filter((cat) => {
+    if (!words.length) return true
+    return words.every((w) => normalizeQuery(`${cat.name} ${cat.id} ${cat.description}`).includes(w))
+  })
+
+  if (el.categorySummary) el.categorySummary.textContent = `${all.length} danh mục`
+
+  if (!el.categoryList) return
+
+  el.categoryList.innerHTML = rows.length
+    ? rows.map((cat) => {
+        const dishCount = db.listDishes().filter((d) => d.category === cat.id).length
+        const isDefault = ['pho-bun','com','banh-mi','do-uong','an-vat','combo'].includes(cat.id)
+        return `
+      <article class="category-card" data-id="${escape(cat.id)}">
+        <div class="category-icon-wrap">
+          <span class="category-icon">${escape(cat.icon || '🍽️')}</span>
+        </div>
+        <div class="category-body">
+          <div class="category-title">
+            <h3>${escape(cat.name)}</h3>
+            <span class="dish-code">${escape(cat.id)}</span>
+            ${isDefault ? '<span class="tag">Mặc định</span>' : ''}
+          </div>
+          <p class="dish-desc">${escape(cat.description) || '<em class="muted">Chưa có mô tả</em>'}</p>
+          <div class="category-stats">
+            <span>🍜 <b>${dishCount}</b> món</span>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="icon-btn" data-action="category-edit" data-id="${escape(cat.id)}" title="Sửa">✎</button>
+          ${isDefault
+            ? '<span class="muted" title="Không thể xóa danh mục mặc định" style="padding:0 8px;font-size:0.8em">🔒 Mặc định</span>'
+            : `<button type="button" class="icon-btn is-danger" data-action="category-delete" data-id="${escape(cat.id)}" title="Xóa">🗑</button>`
+          }
+        </div>
+      </article>`
+      }).join('')
+    : '<p class="muted">Không có danh mục nào khớp bộ lọc.</p>'
+}
+
+const categoryForm = (cat) => `
+  <form id="category-form" novalidate>
+    <div class="form-grid">
+      <label class="field">
+        <span>ID danh mục *</span>
+        <input name="id" value="${escape(cat?.id ?? '')}" ${cat ? 'readonly' : ''} placeholder="vd: mon-cuon" required />
+        <small class="field-hint">Chỉ chữ thường, số và dấu gạch ngang. Không thể thay đổi sau khi tạo.</small>
+      </label>
+      <label class="field">
+        <span>Biểu tượng (emoji) *</span>
+        <input name="icon" value="${escape(cat?.icon ?? '🍽️')}" placeholder="🍽️" maxlength="4" required />
+      </label>
+      <label class="field span-2">
+        <span>Tên danh mục *</span>
+        <input name="name" value="${escape(cat?.name ?? '')}" required />
+      </label>
+      <label class="field span-2">
+        <span>Mô tả</span>
+        <textarea name="description" rows="2">${escape(cat?.description ?? '')}</textarea>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-action="close-modal">Huỷ</button>
+      <button type="submit" class="btn btn-primary">${cat ? 'Lưu thay đổi' : 'Thêm danh mục'}</button>
+    </div>
+  </form>`
+
+const openCategoryModal = (cat) => {
+  lastFocused = document.activeElement
+  state.editingCategory = cat
+  el.modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${cat ? 'Sửa danh mục' : 'Thêm danh mục'}">
+        <header class="modal-head">
+          <h2>${cat ? 'Sửa danh mục' : 'Thêm danh mục'}</h2>
+          <button type="button" class="icon-btn" data-action="close-modal" aria-label="Đóng">✕</button>
+        </header>
+        ${categoryForm(cat)}
+      </div>
+    </div>`
+  document.body.style.overflow = 'hidden'
+  el.modalRoot.querySelector('[name="id"]')?.focus()
+}
+
+const submitCategory = (form) => {
+  const cat = state.editingCategory
+  const data = new FormData(form)
+  const payload = {
+    id: String(data.get('id') ?? '').trim(),
+    name: String(data.get('name') ?? '').trim(),
+    icon: String(data.get('icon') ?? '').trim() || '🍽️',
+    description: String(data.get('description') ?? '').trim(),
+  }
+  const result = cat ? db.updateCategory(cat.id, payload) : db.createCategory(payload)
+  if (result?.error) return toast(result.error, 'err')
+  toast(cat ? `Đã cập nhật danh mục ${result.category.name}` : `Đã thêm danh mục ${result.category.name}`)
+  closeModal()
+  fillCategoryOptions()
+  render()
+}
+
+/* ---------------- customers ---------------- */
+
+const renderCustomers = () => {
+  if (!el.customerList) return
+  const all = auth.listUsersAdmin()
+  const words = normalizeQuery(state.customerQuery).split(' ').filter(Boolean)
+  const rows = all.filter((u) => {
+    if (state.customerRole !== 'all' && u.role !== state.customerRole) return false
+    if (!words.length) return true
+    return words.every((w) => normalizeQuery(`${u.name} ${u.email} ${u.phone ?? ''}`).includes(w))
+  })
+
+  const totalCustomers = all.filter((u) => u.role === 'customer').length
+  const totalShippers = all.filter((u) => u.role === 'shipper').length
+  if (el.customerSummary) {
+    el.customerSummary.textContent = `${all.length} tài khoản · ${totalCustomers} khách hàng · ${totalShippers} shipper`
+  }
+
+  const currentUser = auth.getUser()
+
+  el.customerList.innerHTML = rows.length
+    ? rows.map((u) => {
+        const roleLabel = ROLE_LABEL[u.role] || u.role
+        const roleTone = ROLE_TONE[u.role] || 'info'
+        const regDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Không rõ'
+        const isSelf = u.id === currentUser?.id
+        const isAdmin = u.role === 'admin'
+        // Count orders for this user
+        const userOrders = db.listOrders().filter((o) => o.userId === u.id)
+        return `
+      <article class="customer-card" data-id="${escape(u.id)}">
+        <div class="customer-avatar">${escape(u.name.charAt(0).toUpperCase())}</div>
+        <div class="customer-info">
+          <div class="customer-name-row">
+            <strong>${escape(u.name)}</strong>
+            <span class="badge is-${roleTone}">${escape(roleLabel)}</span>
+            ${isSelf ? '<span class="tag">Bạn</span>' : ''}
+          </div>
+          <div class="customer-meta">
+            <span>📧 ${escape(u.email)}</span>
+            ${u.phone ? `<span>📱 ${escape(u.phone)}</span>` : ''}
+            <span>📅 Đăng ký: ${escape(regDate)}</span>
+            <span>📦 ${userOrders.length} đơn</span>
+          </div>
+        </div>
+        <div class="row-actions">
+          ${!isAdmin && !isSelf ? `
+            <select class="customer-role-select" data-action="customer-role-change" data-id="${escape(u.id)}">
+              <option value="customer" ${u.role === 'customer' ? 'selected' : ''}>Khách hàng</option>
+              <option value="shipper" ${u.role === 'shipper' ? 'selected' : ''}>Shipper</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-ghost" data-action="customer-orders" data-id="${escape(u.id)}" data-name="${escape(u.name)}">Xem đơn</button>
+            <button type="button" class="icon-btn is-danger" data-action="customer-delete" data-id="${escape(u.id)}" data-name="${escape(u.name)}" title="Xóa tài khoản">🗑</button>
+          ` : isAdmin ? '<small class="muted">Quản trị viên</small>' : '<small class="muted">Tài khoản hiện tại</small>'}
+        </div>
+      </article>`
+      }).join('')
+    : '<p class="muted">Không có tài khoản nào khớp bộ lọc.</p>'
+}
+
+const openCustomerOrdersModal = (userId, userName) => {
+  const userOrders = db.listOrders().filter((o) => o.userId === userId)
+  el.modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal order-detail-modal" role="dialog" aria-modal="true">
+        <header class="modal-head">
+          <div><h2>Đơn hàng của ${escape(userName)}</h2><small class="muted">${userOrders.length} đơn</small></div>
+          <button type="button" class="icon-btn" data-action="close-modal">✕</button>
+        </header>
+        <div class="order-list" style="max-height:60vh;overflow-y:auto;padding:0 4px;">
+          ${userOrders.length ? userOrders.map((o) => `
+            <div class="mini-row" style="padding:10px 0;border-bottom:1px solid var(--border)">
+              <span><b>${escape(o.code)}</b> — ${escape(db.ORDER_STATUS[o.status]?.label ?? o.status)}</span>
+              <span><b>${money(o.total)}</b> · ${new Date(o.createdAt).toLocaleDateString('vi-VN')}</span>
+            </div>`).join('') : '<p class="muted">Chưa có đơn hàng.</p>'}
+        </div>
+        <div class="modal-foot"><button type="button" class="btn btn-primary" data-action="close-modal">Đóng</button></div>
+      </div>
+    </div>`
+  document.body.style.overflow = 'hidden'
 }
 
 /* ---------------- voucher ---------------- */
@@ -1077,10 +1284,107 @@ document.addEventListener('click', async (event) => {
       fillCategoryOptions()
       return render()
     }
+    /* ---- categories ---- */
+    if (action === 'category-new') {
+      if (deny()) return undefined
+      return openCategoryModal(null)
+    }
+    if (action === 'category-edit') {
+      if (deny()) return undefined
+      const cat = db.findCategory(target.dataset.id)
+      return cat ? openCategoryModal(cat) : toast('Không tìm thấy danh mục', 'err')
+    }
+    if (action === 'category-delete') {
+      if (deny()) return undefined
+      const catId = target.dataset.id
+      const cat = db.findCategory(catId)
+      if (!cat) return toast('Không tìm thấy danh mục', 'err')
+      const dishCount = db.listDishes().filter((d) => d.category === catId).length
+      el.modalRoot.innerHTML = `
+        <div class="modal-backdrop">
+          <div class="modal" role="dialog" aria-modal="true">
+            <header class="modal-head"><h2>Xóa danh mục</h2></header>
+            <div class="form-grid">
+              <p>Bạn có chắc muốn xóa danh mục <b>${escape(cat.name)}</b>?</p>
+              ${dishCount ? `<p class="muted">Có ${dishCount} món thuộc danh mục này. Các món sẽ giữ nguyên nhưng danh mục không còn hiển thị.</p>` : ''}
+            </div>
+            <div class="modal-foot">
+              <button type="button" class="btn btn-ghost" data-action="close-modal">Giữ lại</button>
+              <button type="button" class="btn btn-primary" data-action="category-delete-confirm" data-id="${escape(catId)}">Xóa</button>
+            </div>
+          </div>
+        </div>`
+      document.body.style.overflow = 'hidden'
+      return undefined
+    }
+    if (action === 'category-delete-confirm') {
+      if (deny()) return undefined
+      const result = db.deleteCategory(target.dataset.id)
+      if (result?.error) return toast(result.error, 'err')
+      toast('Đã xóa danh mục')
+      closeModal()
+      fillCategoryOptions()
+      return render()
+    }
+    /* ---- customers ---- */
+    if (action === 'customer-orders') {
+      if (deny()) return undefined
+      return openCustomerOrdersModal(target.dataset.id, target.dataset.name)
+    }
+    if (action === 'customer-delete') {
+      if (deny()) return undefined
+      const currentUser = auth.getUser()
+      el.modalRoot.innerHTML = `
+        <div class="modal-backdrop">
+          <div class="modal" role="dialog" aria-modal="true">
+            <header class="modal-head"><h2>Xóa tài khoản</h2></header>
+            <div class="form-grid">
+              <p>Bạn có chắc muốn xóa tài khoản <b>${escape(target.dataset.name)}</b>?</p>
+              <p class="muted">Hành động này không thể hoàn tác. Lịch sử đơn hàng vẫn được giữ lại.</p>
+            </div>
+            <div class="modal-foot">
+              <button type="button" class="btn btn-ghost" data-action="close-modal">Hủy</button>
+              <button type="button" class="btn btn-primary" data-action="customer-delete-confirm"
+                data-id="${escape(target.dataset.id)}" data-requester="${escape(currentUser?.id ?? '')}">Xóa</button>
+            </div>
+          </div>
+        </div>`
+      document.body.style.overflow = 'hidden'
+      return undefined
+    }
+    if (action === 'customer-delete-confirm') {
+      if (deny()) return undefined
+      const result = auth.deleteUserAdmin(target.dataset.id, target.dataset.requester)
+      if (result?.error) return toast(result.error, 'err')
+      toast('Đã xóa tài khoản')
+      closeModal()
+      return renderCustomers()
+    }
     return undefined
   }
 
   if (event.target.classList.contains('modal-backdrop')) closeModal()
+})
+
+/* Handle customer role change via select change event */
+document.addEventListener('change', (event) => {
+  if (event.target.dataset.action === 'customer-role-change') {
+    if (deny()) { event.target.value = event.target.dataset.originalValue || event.target.value; return }
+    const currentUser = auth.getUser()
+    const result = auth.updateUserRoleAdmin(event.target.dataset.id, event.target.value, currentUser?.id ?? '')
+    if (result?.error) { toast(result.error, 'err'); return }
+    toast(`Đã cập nhật vai trò thành ${ROLE_LABEL[event.target.value] || event.target.value}`)
+    return
+  }
+  if (event.target.id === 'revenue-date' && el.revenueReport) {
+    el.revenueReport.dataset.value = event.target.value
+    renderStats()
+    return
+  }
+  if (event.target.id === 'customer-role-filter') {
+    state.customerRole = event.target.value
+    renderCustomers()
+  }
 })
 
 el.modalRoot.addEventListener('change', (event) => {
@@ -1101,6 +1405,10 @@ el.modalRoot.addEventListener('submit', (event) => {
   if (event.target.id === 'voucher-form') {
     event.preventDefault()
     return submitVoucher(event.target)
+  }
+  if (event.target.id === 'category-form') {
+    event.preventDefault()
+    return submitCategory(event.target)
   }
   return undefined
 })
@@ -1147,6 +1455,18 @@ el.voucherSearch.addEventListener('input', (event) => {
   state.voucherQuery = event.target.value
   renderVouchers()
 })
+if (el.customerSearch) {
+  el.customerSearch.addEventListener('input', (event) => {
+    state.customerQuery = event.target.value
+    renderCustomers()
+  })
+}
+if (el.categorySearch) {
+  el.categorySearch.addEventListener('input', (event) => {
+    state.categoryQuery = event.target.value
+    renderCategories()
+  })
+}
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return
@@ -1155,11 +1475,6 @@ document.addEventListener('keydown', (event) => {
   if (el.modalRoot.innerHTML) closeModal()
 })
 
-document.addEventListener('change', (event) => {
-  if (event.target.id !== 'revenue-date' || !el.revenueReport) return
-  el.revenueReport.dataset.value = event.target.value
-  renderStats()
-})
 
 window.addEventListener('hashchange', render)
 
@@ -1172,6 +1487,12 @@ window.addEventListener('storage', (event) => {
   if (event.key === 'cbmfood.session.admin') {
     /* Đăng nhập/đăng xuất ở tab quản trị khác phải có hiệu lực ngay. */
     if (syncGuard()) render()
+    return
+  }
+  if (event.key === 'cbmfood.categories') {
+    db.reloadCategoriesFromStorage()
+    fillCategoryOptions()
+    render()
     return
   }
   if (

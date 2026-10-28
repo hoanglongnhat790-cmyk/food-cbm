@@ -245,6 +245,7 @@ export const registerShipper = async ({ name, email, phone = '', password } = {}
     role: 'shipper',
     salt,
     hash,
+    createdAt: Date.now(),
   }
   users = [user, ...users]
   persist()
@@ -274,6 +275,7 @@ export const register = async ({ name, email, phone = '', password } = {}) => {
     role: 'customer',
     salt,
     hash,
+    createdAt: Date.now(),
   }
   users = [user, ...users]
   persist()
@@ -318,6 +320,65 @@ export const updateProfile = async (patch = {}) => {
 }
 
 export const listUsers = () => users.map(publicUser)
+
+/** Trả danh sách người dùng đầy đủ thông tin (bao gồm ngày đăng ký) — chỉ dành cho admin. */
+export const listUsersAdmin = () =>
+  users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    phone: u.phone,
+    role: u.role,
+    createdAt: u.createdAt || null,
+  }))
+
+/** Admin xóa một tài khoản (không thể xóa chính mình hoặc tài khoản admin gốc). */
+export const deleteUserAdmin = (targetId, requesterId) => {
+  const requester = users.find((u) => u.id === requesterId)
+  if (!requester || requester.role !== 'admin') return { error: 'Không có quyền' }
+  if (targetId === requesterId) return { error: 'Không thể xóa tài khoản đang dùng' }
+  const target = users.find((u) => u.id === targetId)
+  if (!target) return { error: 'Không tìm thấy tài khoản' }
+  if (target.role === 'admin') return { error: 'Không thể xóa tài khoản quản trị' }
+  users = users.filter((u) => u.id !== targetId)
+  persist()
+  return { ok: true }
+}
+
+/** Admin cập nhật role của một tài khoản. */
+export const updateUserRoleAdmin = (targetId, newRole, requesterId) => {
+  const VALID_ROLES = ['customer', 'shipper']
+  if (!VALID_ROLES.includes(newRole)) return { error: 'Vai trò không hợp lệ' }
+  const requester = users.find((u) => u.id === requesterId)
+  if (!requester || requester.role !== 'admin') return { error: 'Không có quyền' }
+  const index = users.findIndex((u) => u.id === targetId)
+  if (index === -1) return { error: 'Không tìm thấy tài khoản' }
+  if (users[index].role === 'admin') return { error: 'Không thể thay đổi role admin' }
+  users = users.map((u, i) => (i === index ? { ...u, role: newRole } : u))
+  persist()
+  return { user: publicUser(users[index]) }
+}
+
+/** Admin cập nhật thông tin người dùng (tên, phone). */
+export const updateUserByAdmin = (targetId, patch, requesterId) => {
+  const requester = users.find((u) => u.id === requesterId)
+  if (!requester || requester.role !== 'admin') return { error: 'Không có quyền' }
+  const index = users.findIndex((u) => u.id === targetId)
+  if (index === -1) return { error: 'Không tìm thấy tài khoản' }
+  const next = { ...users[index] }
+  if (patch.name !== undefined) {
+    const name = typeof patch.name === 'string' ? patch.name.trim() : ''
+    if (name.length < 2) return { error: 'Họ tên quá ngắn' }
+    next.name = name
+  }
+  if (patch.phone !== undefined) {
+    if (!validPhone(patch.phone)) return { error: 'Số điện thoại sai định dạng' }
+    next.phone = typeof patch.phone === 'string' ? patch.phone.trim() : ''
+  }
+  users = users.map((u, i) => (i === index ? next : u))
+  persist()
+  return { user: publicUser(next) }
+}
 
 export const resetUsers = async () => {
   users = []
